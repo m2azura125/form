@@ -73,10 +73,17 @@
             </select>
         </div>
 
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <select wire:model.live="status" class="rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                 <option value="">Semua Status</option>
                 @foreach (\App\Models\Submission::STATUS_LABELS as $value => $label)
+                    <option value="{{ $value }}">{{ $label }}</option>
+                @endforeach
+            </select>
+
+            <select wire:model.live="tipe" class="rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                <option value="">Semua Tipe</option>
+                @foreach (\App\Models\Submission::TIPE_LABELS as $value => $label)
                     <option value="{{ $value }}">{{ $label }}</option>
                 @endforeach
             </select>
@@ -93,7 +100,7 @@
     </div>
 
     {{-- Desktop table --}}
-    <div class="hidden lg:block bg-white border border-zinc-200 rounded-lg overflow-hidden">
+    <div class="hidden lg:block bg-white border border-zinc-200 rounded-lg overflow-x-auto">
         <table class="min-w-full divide-y divide-zinc-200">
             <thead class="bg-zinc-50 sticky top-0">
                 <tr>
@@ -103,6 +110,7 @@
                         @if ($sortField === 'nama') <span class="text-indigo-600">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span> @endif
                     </th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">Judul Alat</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">Tipe</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide cursor-pointer select-none" wire:click="sortBy('tanggal_pengajuan')">
                         Tgl Pengajuan
                         @if ($sortField === 'tanggal_pengajuan') <span class="text-indigo-600">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span> @endif
@@ -113,7 +121,7 @@
                     </th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">Biaya Jasa</th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">Status</th>
-                    <th class="px-4 py-3 text-right text-xs font-medium text-zinc-500 uppercase tracking-wide">Aksi</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">Aksi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-zinc-100">
@@ -121,14 +129,15 @@
                     <tr class="hover:bg-zinc-50">
                         <td class="px-4 py-3 text-sm text-zinc-500 tabular-nums">{{ $submissions->firstItem() + $i }}</td>
                         <td class="px-4 py-3 text-sm font-medium text-zinc-900">{{ $submission->nama }}</td>
-                        <td class="px-4 py-3 text-sm text-zinc-600 max-w-xs truncate">{{ $submission->judul_alat }}</td>
+                        <td class="px-4 py-3 text-sm text-zinc-600"><div class="max-w-[200px] truncate" title="{{ $submission->judul_alat }}">{{ $submission->judul_alat }}</div></td>
+                        <td class="px-4 py-3 text-sm text-zinc-600 whitespace-nowrap">{{ $submission->tipeLabel() }}</td>
                         <td class="px-4 py-3 text-sm text-zinc-600 tabular-nums">{{ $submission->tanggal_pengajuan->format('d-m-Y') }}</td>
                         <td class="px-4 py-3 text-sm tabular-nums {{ $submission->isOverdue() ? 'text-red-600 font-medium' : ($submission->isDeadlineUrgent() ? 'text-amber-600 font-medium' : 'text-zinc-600') }}">
                             {{ $submission->deadline->format('d-m-Y') }}
                         </td>
                         <td class="px-4 py-3 text-sm text-zinc-600 tabular-nums">{{ $submission->biayaJasaFormatted() ?? '—' }}</td>
                         <td class="px-4 py-3 text-sm"><x-status-badge :status="$submission->status" /></td>
-                        <td class="px-4 py-3 text-right text-sm whitespace-nowrap">
+                        <td class="px-4 py-3 text-left text-sm whitespace-nowrap">
                             <div class="inline-flex items-center gap-1.5">
                                 @if ($trash)
                                     <button wire:click="restoreSubmission({{ $submission->id }})" class="inline-flex items-center rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm hover:bg-indigo-500">Pulihkan</button>
@@ -145,6 +154,8 @@
                                     @endif
 
                                     <button wire:click="openDetail({{ $submission->id }})" class="inline-flex items-center rounded-md bg-zinc-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm hover:bg-zinc-500">Detail</button>
+
+                                    <button wire:click="openEdit({{ $submission->id }})" class="inline-flex items-center rounded-md border border-indigo-300 bg-white px-2.5 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50">Edit</button>
 
                                     @if ($submission->status === 'diproses')
                                         <button
@@ -168,7 +179,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="px-4 py-12 text-center text-sm text-zinc-400">
+                        <td colspan="9" class="px-4 py-12 text-center text-sm text-zinc-400">
                             {{ $trash ? 'Sampah kosong.' : 'Belum ada pengajuan masuk.' }}
                         </td>
                     </tr>
@@ -181,15 +192,22 @@
     <div class="lg:hidden space-y-3">
         @forelse ($submissions as $submission)
             <div class="bg-white border border-zinc-200 rounded-lg p-4">
-                <div class="flex items-start justify-between">
-                    <div>
-                        <p class="text-sm font-medium text-zinc-900">{{ $submission->nama }}</p>
-                        <p class="text-sm text-zinc-500">{{ $submission->judul_alat }}</p>
-                    </div>
+                {{-- Header: nama + judul alat --}}
+                <div class="min-w-0">
+                    <p class="text-sm font-medium text-zinc-900 truncate">{{ $submission->nama }}</p>
+                    <p class="text-xs text-zinc-500 truncate mt-0.5">{{ $submission->judul_alat }}</p>
+                </div>
+
+                {{-- Badge status --}}
+                <div class="mt-2">
                     <x-status-badge :status="$submission->status" />
                 </div>
 
                 <dl class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                        <dt class="text-xs text-zinc-400">Tipe</dt>
+                        <dd class="text-zinc-700">{{ $submission->tipeLabel() }}</dd>
+                    </div>
                     <div>
                         <dt class="text-xs text-zinc-400">Tgl Pengajuan</dt>
                         <dd class="text-zinc-700 tabular-nums">{{ $submission->tanggal_pengajuan->format('d-m-Y') }}</dd>
@@ -206,39 +224,36 @@
                     </div>
                 </dl>
 
-                <div class="mt-3 flex flex-wrap items-center gap-1.5">
+                {{-- Tombol aksi: wrap ke baris baru kalau tidak muat --}}
+                <div class="mt-3 flex flex-wrap items-center gap-2">
                     @if ($trash)
-                        <button wire:click="restoreSubmission({{ $submission->id }})" class="inline-flex items-center rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">Pulihkan</button>
+                        <button wire:click="restoreSubmission({{ $submission->id }})" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">Pulihkan</button>
                     @else
                         @if ($submission->status === 'baru')
-                            <button wire:click="openAccept({{ $submission->id }})" class="inline-flex items-center rounded-md bg-indigo-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">Terima</button>
+                            <button wire:click="openAccept({{ $submission->id }})" class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">Terima</button>
                             <button
                                 wire:click="rejectSubmission({{ $submission->id }})"
                                 wire:confirm="Yakin ingin menolak pengajuan ini?"
-                                class="inline-flex items-center rounded-md bg-red-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
-                            >
-                                Tolak
-                            </button>
+                                class="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
+                            >Tolak</button>
                         @endif
 
-                        <button wire:click="openDetail({{ $submission->id }})" class="inline-flex items-center rounded-md bg-zinc-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm">Detail</button>
+                        <button wire:click="openDetail({{ $submission->id }})" class="inline-flex items-center rounded-md bg-zinc-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">Detail</button>
+
+                        <button wire:click="openEdit({{ $submission->id }})" class="inline-flex items-center rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-600">Edit</button>
 
                         @if ($submission->status === 'diproses')
                             <button
                                 wire:click="completeSubmission({{ $submission->id }})"
                                 wire:confirm="Apakah pembayarannya sudah selesai? Pengajuan akan ditandai Selesai."
-                                class="inline-flex items-center rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm"
-                            >
-                                Selesai
-                            </button>
+                                class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
+                            >Selesai</button>
                         @endif
 
                         <button
                             wire:click="confirmDelete({{ $submission->id }})"
-                            class="inline-flex items-center rounded-md border border-red-300 bg-white px-2.5 py-1 text-xs font-semibold text-red-600"
-                        >
-                            Hapus
-                        </button>
+                            class="inline-flex items-center rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-semibold text-red-600"
+                        >Hapus</button>
                     @endif
                 </div>
             </div>
@@ -270,6 +285,7 @@
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Nama</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->nama }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Asal Kampus/Sekolah</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->asal_kampus }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Judul Alat</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->judul_alat }}</dd></div>
+                            <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Tipe</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->tipeLabel() }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Fitur</dt><dd class="col-span-2 text-zinc-900 whitespace-pre-line">{{ $activeSubmission->fitur }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Tgl Pengajuan</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->tanggal_pengajuan->format('d-m-Y') }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Deadline</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->deadline->format('d-m-Y') }}</dd></div>
@@ -301,6 +317,16 @@
                                 <label class="block text-sm font-medium text-zinc-700">Judul Alat</label>
                                 <input type="text" wire:model.blur="form.judul_alat" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                 @error('form.judul_alat') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-700">Tipe</label>
+                                <select wire:model.blur="form.tipe" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    @foreach (\App\Models\Submission::TIPE_LABELS as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @error('form.tipe') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
                             </div>
 
                             <div>

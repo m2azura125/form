@@ -17,6 +17,7 @@ class SubmissionFormTest extends TestCase
             ->set('form.nama', 'Budi Santoso')
             ->set('form.asal_kampus', 'Universitas Gadjah Mada')
             ->set('form.judul_alat', 'Alat Pengering Otomatis Berbasis Arduino')
+            ->set('form.tipe', Submission::TIPE_PROJECT)
             ->set('form.fitur', 'Sensor kelembaban, kontrol suhu otomatis, notifikasi selesai.')
             ->set('form.tanggal_pengajuan', now()->format('Y-m-d'))
             ->set('form.deadline', now()->addDays(7)->format('Y-m-d'));

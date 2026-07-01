@@ -29,6 +29,9 @@ class Dashboard extends Component
     #[Url(as: 'status', history: true)]
     public string $status = '';
 
+    #[Url(as: 'tipe', history: true)]
+    public string $tipe = '';
+
     #[Url(as: 'tgl_dari', history: true)]
     public string $tanggalDari = '';
 
@@ -95,7 +98,7 @@ class Dashboard extends Component
     public function resetFilters(): void
     {
         $this->reset([
-            'search', 'status',
+            'search', 'status', 'tipe',
             'tanggalDari', 'tanggalSampai', 'deadlineDari', 'deadlineSampai',
         ]);
         $this->resetPage();
@@ -265,6 +268,10 @@ class Dashboard extends Component
             $query->where('status', $this->status);
         }
 
+        if ($this->tipe !== '') {
+            $query->where('tipe', $this->tipe);
+        }
+
         if ($this->tanggalDari !== '') {
             $query->whereDate('tanggal_pengajuan', '>=', $this->tanggalDari);
         }
@@ -292,6 +299,7 @@ class Dashboard extends Component
         return [
             'q' => $this->search,
             'status' => $this->status,
+            'tipe' => $this->tipe,
             'tgl_dari' => $this->tanggalDari,
             'tgl_sampai' => $this->tanggalSampai,
             'dl_dari' => $this->deadlineDari,

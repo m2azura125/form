@@ -31,6 +31,10 @@ class SubmissionsExport implements FromQuery, WithHeadings, WithMapping, WithSty
             $query->where('status', $this->filters['status']);
         }
 
+        if (filled($this->filters['tipe'] ?? null)) {
+            $query->where('tipe', $this->filters['tipe']);
+        }
+
         if (filled($this->filters['tgl_dari'] ?? null)) {
             $query->whereDate('tanggal_pengajuan', '>=', $this->filters['tgl_dari']);
         }
@@ -53,7 +57,7 @@ class SubmissionsExport implements FromQuery, WithHeadings, WithMapping, WithSty
     public function headings(): array
     {
         return [
-            'No', 'Nama', 'Asal Kampus/Sekolah', 'Judul Alat', 'Fitur',
+            'No', 'Nama', 'Asal Kampus/Sekolah', 'Judul Alat', 'Tipe', 'Fitur',
             'Tanggal Pengajuan', 'Deadline', 'Biaya Jasa', 'Status', 'Dibuat Pada',
         ];
     }
@@ -68,6 +72,7 @@ class SubmissionsExport implements FromQuery, WithHeadings, WithMapping, WithSty
             $this->escapeFormula($submission->nama),
             $this->escapeFormula($submission->asal_kampus),
             $this->escapeFormula($submission->judul_alat),
+            $submission->tipeLabel(),
             $this->escapeFormula($submission->fitur),
             $submission->tanggal_pengajuan->format('d-m-Y'),
             $submission->deadline->format('d-m-Y'),

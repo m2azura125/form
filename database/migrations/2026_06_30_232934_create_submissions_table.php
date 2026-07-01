@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('nama', 100);
             $table->string('asal_kampus', 150);
             $table->string('judul_alat', 150);
+            $table->enum('tipe', ['project', 'cetak_pcb', 'cetak_3d_printing']);
             $table->text('fitur');
             $table->date('tanggal_pengajuan');
             $table->date('deadline');
@@ -25,6 +26,7 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->index('status');
+            $table->index('tipe');
             $table->index('tanggal_pengajuan');
             $table->index('deadline');
         });

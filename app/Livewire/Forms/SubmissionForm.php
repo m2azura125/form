@@ -10,6 +10,7 @@ class SubmissionForm extends Form
     public string $nama = '';
     public string $asal_kampus = '';
     public string $judul_alat = '';
+    public string $tipe = '';
     public string $fitur = '';
     public string $tanggal_pengajuan = '';
     public string $deadline = '';
@@ -24,6 +25,7 @@ class SubmissionForm extends Form
             'nama' => ['required', 'string', 'min:3', 'max:100'],
             'asal_kampus' => ['required', 'string', 'min:3', 'max:150'],
             'judul_alat' => ['required', 'string', 'min:3', 'max:150'],
+            'tipe' => ['required', 'in:'.implode(',', Submission::TIPES)],
             'fitur' => ['required', 'string', 'max:1000'],
             'tanggal_pengajuan' => ['required', 'date'],
             'deadline' => ['required', 'date', 'after_or_equal:tanggal_pengajuan'],
@@ -49,6 +51,8 @@ class SubmissionForm extends Form
             'judul_alat.required' => 'Judul alat wajib diisi.',
             'judul_alat.min' => 'Judul alat minimal 3 karakter.',
             'judul_alat.max' => 'Judul alat maksimal 150 karakter.',
+            'tipe.required' => 'Tipe wajib dipilih.',
+            'tipe.in' => 'Tipe tidak valid.',
             'fitur.required' => 'Fitur wajib diisi.',
             'fitur.max' => 'Fitur maksimal 1000 karakter.',
             'tanggal_pengajuan.required' => 'Tanggal pengajuan wajib diisi.',
@@ -68,6 +72,7 @@ class SubmissionForm extends Form
         $this->nama = $submission->nama;
         $this->asal_kampus = $submission->asal_kampus;
         $this->judul_alat = $submission->judul_alat;
+        $this->tipe = $submission->tipe;
         $this->fitur = $submission->fitur;
         $this->tanggal_pengajuan = $submission->tanggal_pengajuan->format('Y-m-d');
         $this->deadline = $submission->deadline->format('Y-m-d');
@@ -81,6 +86,7 @@ class SubmissionForm extends Form
             'nama' => $this->nama,
             'asal_kampus' => $this->asal_kampus,
             'judul_alat' => $this->judul_alat,
+            'tipe' => $this->tipe,
             'fitur' => $this->fitur,
             'tanggal_pengajuan' => $this->tanggal_pengajuan,
             'deadline' => $this->deadline,

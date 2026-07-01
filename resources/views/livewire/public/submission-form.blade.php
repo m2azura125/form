@@ -97,6 +97,28 @@
                     </div>
 
                     <div>
+                        <label for="tipe" class="block text-sm font-medium text-zinc-700">Tipe</label>
+                        <div class="relative mt-1.5">
+                            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-400">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 7h.01M7 3h5.586a1 1 0 01.707.293l6.414 6.414a1 1 0 010 1.414l-7.586 7.586a1 1 0 01-1.414 0L3.293 12.293A1 1 0 013 11.586V5a2 2 0 012-2z" />
+                                </svg>
+                            </span>
+                            <select
+                                id="tipe"
+                                wire:model.blur="form.tipe"
+                                class="block w-full rounded-md border-zinc-300 pl-10 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            >
+                                <option value="">Pilih tipe</option>
+                                @foreach (\App\Models\Submission::TIPE_LABELS as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @error('form.tipe') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
                         <label for="fitur" class="block text-sm font-medium text-zinc-700">Fitur</label>
                         <textarea
                             id="fitur"

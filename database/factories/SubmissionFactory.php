@@ -49,6 +49,7 @@ class SubmissionFactory extends Factory
             'nama' => $this->faker->name(),
             'asal_kampus' => $this->faker->randomElement(self::ASAL_KAMPUS),
             'judul_alat' => $this->faker->randomElement(self::JUDUL_ALAT),
+            'tipe' => $this->faker->randomElement(Submission::TIPES),
             'fitur' => $this->faker->paragraph(3),
             'tanggal_pengajuan' => $tanggalPengajuan,
             'deadline' => $deadline,

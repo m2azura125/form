@@ -30,10 +30,27 @@ class Submission extends Model
         self::STATUS_DITOLAK => 'Ditolak',
     ];
 
+    public const TIPE_PROJECT = 'project';
+    public const TIPE_CETAK_PCB = 'cetak_pcb';
+    public const TIPE_CETAK_3D_PRINTING = 'cetak_3d_printing';
+
+    public const TIPES = [
+        self::TIPE_PROJECT,
+        self::TIPE_CETAK_PCB,
+        self::TIPE_CETAK_3D_PRINTING,
+    ];
+
+    public const TIPE_LABELS = [
+        self::TIPE_PROJECT => 'Project',
+        self::TIPE_CETAK_PCB => 'Cetak PCB',
+        self::TIPE_CETAK_3D_PRINTING => 'Cetak 3D Printing',
+    ];
+
     protected $fillable = [
         'nama',
         'asal_kampus',
         'judul_alat',
+        'tipe',
         'fitur',
         'tanggal_pengajuan',
         'deadline',
@@ -53,6 +70,11 @@ class Submission extends Model
     public function statusLabel(): string
     {
         return self::STATUS_LABELS[$this->status] ?? $this->status;
+    }
+
+    public function tipeLabel(): string
+    {
+        return self::TIPE_LABELS[$this->tipe] ?? $this->tipe;
     }
 
     public function biayaJasaFormatted(): ?string

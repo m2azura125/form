@@ -2,10 +2,12 @@
 
 use App\Http\Controllers\Admin\SubmissionExportController;
 use App\Livewire\Admin\Dashboard;
+use App\Livewire\Public\Antrian;
 use App\Livewire\Public\SubmissionForm;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', SubmissionForm::class)->name('home');
+Route::get('/antrian', Antrian::class)->name('antrian');
 
 Route::middleware(['auth'])->group(function () {
     Route::view('profile', 'profile')->name('profile');
