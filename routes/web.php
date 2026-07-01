@@ -1,0 +1,20 @@
+<?php
+
+use App\Http\Controllers\Admin\SubmissionExportController;
+use App\Livewire\Admin\Dashboard;
+use App\Livewire\Public\SubmissionForm;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/', SubmissionForm::class)->name('home');
+
+Route::middleware(['auth'])->group(function () {
+    Route::view('profile', 'profile')->name('profile');
+
+    Route::prefix('admin')->name('admin.')->group(function () {
+        Route::redirect('/', '/admin/dashboard');
+        Route::get('dashboard', Dashboard::class)->name('dashboard');
+        Route::get('export', SubmissionExportController::class)->name('export');
+    });
+});
+
+require __DIR__.'/auth.php';

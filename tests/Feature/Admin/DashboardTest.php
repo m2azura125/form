@@ -1,0 +1,224 @@
+<?php
+
+namespace Tests\Feature\Admin;
+
+use App\Models\Submission;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+use Tests\TestCase;
+
+class DashboardTest extends TestCase
+{
+    use RefreshDatabase;
+
+    public function test_guest_cannot_access_admin_dashboard(): void
+    {
+        $this->get('/admin/dashboard')->assertRedirect('/login');
+    }
+
+    public function test_admin_can_view_dashboard_with_submissions(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Submission::factory()->count(3)->create();
+
+        $this->actingAs($admin)
+            ->get('/admin/dashboard')
+            ->assertOk()
+            ->assertSeeLivewire('admin.dashboard');
+    }
+
+    public function test_search_filters_submissions_by_name(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Submission::factory()->create(['nama' => 'Unique Name Match']);
+        Submission::factory()->create(['nama' => 'Someone Else']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->set('search', 'Unique Name')
+            ->assertSee('Unique Name Match')
+            ->assertDontSee('Someone Else');
+    }
+
+    public function test_search_also_matches_judul_alat(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Submission::factory()->create(['judul_alat' => 'Robot Line Follower Khusus']);
+        Submission::factory()->create(['judul_alat' => 'Alat Lainnya']);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->set('search', 'Line Follower')
+            ->assertSee('Robot Line Follower Khusus')
+            ->assertDontSee('Alat Lainnya');
+    }
+
+    public function test_admin_can_soft_delete_submission(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create();
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('confirmDelete', $submission->id)
+            ->call('deleteSubmission');
+
+        $this->assertSoftDeleted('submissions', ['id' => $submission->id]);
+    }
+
+    public function test_only_super_admin_can_access_trash_or_restore(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create();
+        $submission->delete();
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('restoreSubmission', $submission->id)
+            ->assertForbidden();
+    }
+
+    public function test_super_admin_can_restore_soft_deleted_submission(): void
+    {
+        $superAdmin = User::factory()->create(['role' => 'super_admin']);
+        $submission = Submission::factory()->create();
+        $submission->delete();
+
+        $this->actingAs($superAdmin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('restoreSubmission', $submission->id);
+
+        $this->assertDatabaseHas('submissions', ['id' => $submission->id, 'deleted_at' => null]);
+    }
+
+    public function test_admin_can_update_submission_status_via_edit_form(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('openEdit', $submission->id)
+            ->set('form.status', Submission::STATUS_DIPROSES)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => Submission::STATUS_DIPROSES,
+        ]);
+    }
+
+    public function test_accepting_a_new_submission_requires_biaya_jasa_and_deadline(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('openAccept', $submission->id)
+            ->set('acceptBiayaJasa', '')
+            ->call('acceptSubmission')
+            ->assertHasErrors(['acceptBiayaJasa']);
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => Submission::STATUS_BARU,
+        ]);
+    }
+
+    public function test_accepting_a_new_submission_sets_biaya_jasa_deadline_and_status_diproses(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU]);
+        $newDeadline = now()->addDays(14)->format('Y-m-d');
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('openAccept', $submission->id)
+            ->set('acceptBiayaJasa', '750000')
+            ->set('acceptDeadline', $newDeadline)
+            ->call('acceptSubmission')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => Submission::STATUS_DIPROSES,
+            'biaya_jasa' => 750000,
+        ]);
+        $this->assertSame($newDeadline, $submission->fresh()->deadline->format('Y-m-d'));
+    }
+
+    public function test_rejecting_a_new_submission_sets_status_ditolak(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('rejectSubmission', $submission->id);
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => Submission::STATUS_DITOLAK,
+        ]);
+    }
+
+    public function test_cannot_reject_a_submission_that_is_already_being_processed(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_DIPROSES]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('rejectSubmission', $submission->id);
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => Submission::STATUS_DIPROSES,
+        ]);
+    }
+
+    public function test_completing_a_processed_submission_sets_status_selesai(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_DIPROSES]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('completeSubmission', $submission->id);
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => Submission::STATUS_SELESAI,
+        ]);
+    }
+
+    public function test_cannot_complete_a_submission_that_is_still_new(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('completeSubmission', $submission->id);
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => Submission::STATUS_BARU,
+        ]);
+    }
+}
