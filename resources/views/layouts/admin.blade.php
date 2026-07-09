@@ -16,7 +16,7 @@
         <div class="min-h-screen">
             <livewire:admin.navigation />
 
-            <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <main class="w-full px-4 sm:px-6 lg:px-8 py-6">
                 @if (session('success'))
                     <div class="mb-4 rounded-md bg-emerald-50 border border-emerald-200 px-4 py-3 text-sm text-emerald-700">
                         {{ session('success') }}
