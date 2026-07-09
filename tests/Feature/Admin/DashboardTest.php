@@ -193,16 +193,41 @@ class DashboardTest extends TestCase
     public function test_completing_a_processed_submission_sets_status_selesai(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $submission = Submission::factory()->create(['status' => Submission::STATUS_DIPROSES]);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_DIPROSES, 'biaya_jasa' => 200000]);
 
         $this->actingAs($admin);
 
         Livewire::test(\App\Livewire\Admin\Dashboard::class)
-            ->call('completeSubmission', $submission->id);
+            ->call('openComplete', $submission->id)
+            ->set('completeMetodePembayaran', Submission::METODE_TRANSFER)
+            ->set('completeJumlahBayar', '200000')
+            ->call('completeSubmission')
+            ->assertHasNoErrors();
 
         $this->assertDatabaseHas('submissions', [
             'id' => $submission->id,
             'status' => Submission::STATUS_SELESAI,
+            'metode_pembayaran' => Submission::METODE_TRANSFER,
+            'jumlah_bayar' => 200000,
+        ]);
+    }
+
+    public function test_completing_a_submission_requires_jumlah_bayar_at_least_biaya_jasa(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_DIPROSES, 'biaya_jasa' => 200000]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('openComplete', $submission->id)
+            ->set('completeJumlahBayar', '100000')
+            ->call('completeSubmission')
+            ->assertHasErrors(['completeJumlahBayar']);
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => Submission::STATUS_DIPROSES,
         ]);
     }
 
@@ -214,7 +239,8 @@ class DashboardTest extends TestCase
         $this->actingAs($admin);
 
         Livewire::test(\App\Livewire\Admin\Dashboard::class)
-            ->call('completeSubmission', $submission->id);
+            ->call('openComplete', $submission->id)
+            ->call('completeSubmission');
 
         $this->assertDatabaseHas('submissions', [
             'id' => $submission->id,

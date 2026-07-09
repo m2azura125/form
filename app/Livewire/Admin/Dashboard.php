@@ -16,11 +16,13 @@ class Dashboard extends Component
 {
     use WithPagination;
 
-    private const SORTABLE = ['nama', 'tanggal_pengajuan', 'deadline'];
+    private const SORTABLE = ['nama', 'tanggal_pengajuan', 'deadline', 'urutan'];
 
     private const TRANSIENT_PROPERTIES = [
         'activeId', 'modalMode', 'confirmingDeleteId',
         'acceptingId', 'acceptBiayaJasa', 'acceptDeadline',
+        'reordering', 'reorderItems',
+        'completingId', 'completeMetodePembayaran', 'completeJumlahBayar',
     ];
 
     #[Url(as: 'q', history: true)]
@@ -69,6 +71,16 @@ class Dashboard extends Component
     public string $acceptBiayaJasa = '';
 
     public string $acceptDeadline = '';
+
+    public bool $reordering = false;
+
+    public array $reorderItems = [];
+
+    public ?int $completingId = null;
+
+    public string $completeMetodePembayaran = Submission::METODE_TUNAI;
+
+    public string $completeJumlahBayar = '';
 
     public function updated(string $name): void
     {
@@ -225,6 +237,40 @@ class Dashboard extends Component
         session()->flash('success', 'Pengajuan diterima dan sedang diproses.');
     }
 
+    public function openReorder(): void
+    {
+        $this->reorderItems = Submission::query()
+            ->orderByRaw('urutan is null')
+            ->orderBy('urutan')
+            ->orderBy('id')
+            ->get(['id', 'nama', 'judul_alat'])
+            ->map(fn (Submission $submission) => [
+                'id' => $submission->id,
+                'nama' => $submission->nama,
+                'judul_alat' => $submission->judul_alat,
+            ])
+            ->values()
+            ->all();
+
+        $this->reordering = true;
+    }
+
+    public function closeReorder(): void
+    {
+        $this->reordering = false;
+        $this->reorderItems = [];
+    }
+
+    public function saveReorder(array $orderedIds): void
+    {
+        foreach ($orderedIds as $index => $id) {
+            Submission::query()->where('id', (int) $id)->update(['urutan' => $index + 1]);
+        }
+
+        $this->closeReorder();
+        session()->flash('success', 'Urutan antrian berhasil disimpan.');
+    }
+
     public function rejectSubmission(int $id): void
     {
         $submission = Submission::query()->find($id);
@@ -237,7 +283,7 @@ class Dashboard extends Component
         session()->flash('success', 'Pengajuan ditolak.');
     }
 
-    public function completeSubmission(int $id): void
+    public function openComplete(int $id): void
     {
         $submission = Submission::query()->find($id);
 
@@ -245,7 +291,54 @@ class Dashboard extends Component
             return;
         }
 
-        $submission->update(['status' => Submission::STATUS_SELESAI]);
+        $this->completingId = $id;
+        $this->completeMetodePembayaran = Submission::METODE_TUNAI;
+        $this->completeJumlahBayar = (string) ($submission->biaya_jasa ?? 0);
+        $this->resetValidation();
+    }
+
+    public function closeComplete(): void
+    {
+        $this->completingId = null;
+        $this->completeMetodePembayaran = Submission::METODE_TUNAI;
+        $this->completeJumlahBayar = '';
+        $this->resetValidation();
+    }
+
+    public function completeSubmission(): void
+    {
+        $submission = Submission::query()->find($this->completingId);
+
+        if (! $submission || $submission->status !== Submission::STATUS_DIPROSES) {
+            $this->closeComplete();
+
+            return;
+        }
+
+        $this->validate([
+            'completeMetodePembayaran' => ['required', 'in:'.implode(',', Submission::METODE_PEMBAYARANS)],
+            'completeJumlahBayar' => ['required', 'integer', 'min:0'],
+        ], [
+            'completeMetodePembayaran.required' => 'Metode pembayaran wajib dipilih.',
+            'completeMetodePembayaran.in' => 'Metode pembayaran tidak valid.',
+            'completeJumlahBayar.required' => 'Jumlah bayar wajib diisi.',
+            'completeJumlahBayar.integer' => 'Jumlah bayar harus berupa angka.',
+            'completeJumlahBayar.min' => 'Jumlah bayar tidak boleh negatif.',
+        ]);
+
+        if ((int) $this->completeJumlahBayar < ($submission->biaya_jasa ?? 0)) {
+            $this->addError('completeJumlahBayar', 'Jumlah bayar tidak boleh kurang dari biaya jasa.');
+
+            return;
+        }
+
+        $submission->update([
+            'status' => Submission::STATUS_SELESAI,
+            'metode_pembayaran' => $this->completeMetodePembayaran,
+            'jumlah_bayar' => (int) $this->completeJumlahBayar,
+        ]);
+
+        $this->closeComplete();
         session()->flash('success', 'Pengajuan ditandai selesai.');
     }
 
@@ -321,6 +414,7 @@ class Dashboard extends Component
             'submissions' => $this->filteredQuery()->paginate($this->perPage),
             'summary' => $summary,
             'activeSubmission' => $this->activeId ? Submission::query()->withTrashed()->find($this->activeId) : null,
+            'completingSubmission' => $this->completingId ? Submission::query()->find($this->completingId) : null,
         ]);
     }
 }

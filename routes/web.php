@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\SubmissionExportController;
+use App\Http\Controllers\Admin\SubmissionStrukController;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Public\Antrian;
 use App\Livewire\Public\SubmissionForm;
@@ -16,6 +17,7 @@ Route::middleware(['auth'])->group(function () {
         Route::redirect('/', '/admin/dashboard');
         Route::get('dashboard', Dashboard::class)->name('dashboard');
         Route::get('export', SubmissionExportController::class)->name('export');
+        Route::get('submissions/{submission}/struk', SubmissionStrukController::class)->name('struk');
     });
 });
 

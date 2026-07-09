@@ -18,6 +18,13 @@
             @endif
 
             @unless ($trash)
+                <button
+                    wire:click="openReorder"
+                    class="inline-flex items-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+                >
+                    Edit Urutan
+                </button>
+
                 <a
                     href="{{ route('admin.export', $this->exportQuery()) }}"
                     class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-500"
@@ -105,6 +112,10 @@
             <thead class="bg-zinc-50 sticky top-0">
                 <tr>
                     <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide">No</th>
+                    <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide cursor-pointer select-none" wire:click="sortBy('urutan')">
+                        Urutan
+                        @if ($sortField === 'urutan') <span class="text-indigo-600">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span> @endif
+                    </th>
                     <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wide cursor-pointer select-none" wire:click="sortBy('nama')">
                         Nama
                         @if ($sortField === 'nama') <span class="text-indigo-600">{{ $sortDirection === 'asc' ? '↑' : '↓' }}</span> @endif
@@ -128,6 +139,7 @@
                 @forelse ($submissions as $i => $submission)
                     <tr class="hover:bg-zinc-50">
                         <td class="px-4 py-3 text-sm text-zinc-500 tabular-nums">{{ $submissions->firstItem() + $i }}</td>
+                        <td class="px-4 py-3 text-sm text-zinc-500 tabular-nums">{{ $submission->urutan ?? '—' }}</td>
                         <td class="px-4 py-3 text-sm font-medium text-zinc-900">{{ $submission->nama }}</td>
                         <td class="px-4 py-3 text-sm text-zinc-600"><div class="max-w-[200px] truncate" title="{{ $submission->judul_alat }}">{{ $submission->judul_alat }}</div></td>
                         <td class="px-4 py-3 text-sm text-zinc-600 whitespace-nowrap">{{ $submission->tipeLabel() }}</td>
@@ -157,10 +169,13 @@
 
                                     <button wire:click="openEdit({{ $submission->id }})" class="inline-flex items-center rounded-md border border-indigo-300 bg-white px-2.5 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50">Edit</button>
 
+                                    @if ($submission->biaya_jasa !== null)
+                                        <a href="{{ route('admin.struk', $submission) }}" target="_blank" class="inline-flex items-center rounded-md border border-zinc-300 bg-white px-2.5 py-1 text-xs font-semibold text-zinc-700 hover:bg-zinc-50">Cetak Struk</a>
+                                    @endif
+
                                     @if ($submission->status === 'diproses')
                                         <button
-                                            wire:click="completeSubmission({{ $submission->id }})"
-                                            wire:confirm="Apakah pembayarannya sudah selesai? Pengajuan akan ditandai Selesai."
+                                            wire:click="openComplete({{ $submission->id }})"
                                             class="inline-flex items-center rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500"
                                         >
                                             Selesai
@@ -179,7 +194,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="px-4 py-12 text-center text-sm text-zinc-400">
+                        <td colspan="10" class="px-4 py-12 text-center text-sm text-zinc-400">
                             {{ $trash ? 'Sampah kosong.' : 'Belum ada pengajuan masuk.' }}
                         </td>
                     </tr>
@@ -193,9 +208,12 @@
         @forelse ($submissions as $submission)
             <div class="bg-white border border-zinc-200 rounded-lg p-4">
                 {{-- Header: nama + judul alat --}}
-                <div class="min-w-0">
-                    <p class="text-sm font-medium text-zinc-900 truncate">{{ $submission->nama }}</p>
-                    <p class="text-xs text-zinc-500 truncate mt-0.5">{{ $submission->judul_alat }}</p>
+                <div class="min-w-0 flex items-start gap-2">
+                    <span class="flex-none text-xs font-semibold text-zinc-400 tabular-nums">#{{ $submission->urutan ?? '—' }}</span>
+                    <div class="min-w-0">
+                        <p class="text-sm font-medium text-zinc-900 truncate">{{ $submission->nama }}</p>
+                        <p class="text-xs text-zinc-500 truncate mt-0.5">{{ $submission->judul_alat }}</p>
+                    </div>
                 </div>
 
                 {{-- Badge status --}}
@@ -242,10 +260,13 @@
 
                         <button wire:click="openEdit({{ $submission->id }})" class="inline-flex items-center rounded-md border border-indigo-300 bg-white px-3 py-1.5 text-xs font-semibold text-indigo-600">Edit</button>
 
+                        @if ($submission->biaya_jasa !== null)
+                            <a href="{{ route('admin.struk', $submission) }}" target="_blank" class="inline-flex items-center rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700">Cetak Struk</a>
+                        @endif
+
                         @if ($submission->status === 'diproses')
                             <button
-                                wire:click="completeSubmission({{ $submission->id }})"
-                                wire:confirm="Apakah pembayarannya sudah selesai? Pengajuan akan ditandai Selesai."
+                                wire:click="openComplete({{ $submission->id }})"
                                 class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
                             >Selesai</button>
                         @endif
@@ -403,6 +424,105 @@
                             <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">Terima & Proses</button>
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Complete (Selesai) payment modal --}}
+    @if ($completingId && $completingSubmission)
+        <div class="fixed inset-0 z-40 overflow-y-auto">
+            <div class="fixed inset-0 bg-zinc-900/40" wire:click="closeComplete"></div>
+
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div class="relative bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+                    <h2 class="text-lg font-semibold text-zinc-900">Selesaikan Pengajuan</h2>
+                    <p class="mt-1 text-sm text-zinc-500">Catat pembayaran sebelum pengajuan ditandai Selesai.</p>
+
+                    <div class="mt-4 rounded-md bg-zinc-50 border border-zinc-200 px-3 py-2 text-sm">
+                        <div class="flex justify-between"><span class="text-zinc-500">Biaya Jasa</span><span class="font-medium text-zinc-900 tabular-nums">{{ $completingSubmission->biayaJasaFormatted() ?? '—' }}</span></div>
+                    </div>
+
+                    <form wire:submit="completeSubmission" class="mt-4 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-700">Dibayar Lewat</label>
+                            <select wire:model.live="completeMetodePembayaran" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                @foreach (\App\Models\Submission::METODE_PEMBAYARAN_LABELS as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            @error('completeMetodePembayaran') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-700">Jumlah Dibayarkan (Rp)</label>
+                            <input type="number" min="0" step="1000" wire:model.live="completeJumlahBayar" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            @error('completeJumlahBayar') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div class="flex justify-between text-sm">
+                            <span class="text-zinc-500">Kembalian</span>
+                            <span class="font-medium text-zinc-900 tabular-nums">
+                                Rp {{ number_format(max((int) $completeJumlahBayar - ($completingSubmission->biaya_jasa ?? 0), 0), 0, ',', '.') }}
+                            </span>
+                        </div>
+
+                        <div class="flex justify-end gap-2 pt-2">
+                            <button type="button" wire:click="closeComplete" class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Batal</button>
+                            <button type="submit" class="rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-500">Tandai Selesai</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Reorder (Edit Urutan) modal --}}
+    @if ($reordering)
+        <div
+            class="fixed inset-0 z-40 overflow-y-auto"
+            x-data="{
+                items: @js($reorderItems),
+                dragIndex: null,
+                dragStart(index) { this.dragIndex = index },
+                drop(index) {
+                    if (this.dragIndex === null || this.dragIndex === index) return;
+                    const moved = this.items.splice(this.dragIndex, 1)[0];
+                    this.items.splice(index, 0, moved);
+                    this.dragIndex = null;
+                },
+                save() { $wire.saveReorder(this.items.map(item => item.id)) },
+            }"
+        >
+            <div class="fixed inset-0 bg-zinc-900/40" wire:click="closeReorder"></div>
+
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div class="relative bg-white rounded-lg shadow-xl w-full max-w-lg p-6">
+                    <h2 class="text-lg font-semibold text-zinc-900">Edit Urutan Antrian</h2>
+                    <p class="mt-1 text-sm text-zinc-500">Geser (drag) untuk menyusun ulang. Nomor 1 dikerjakan paling pertama.</p>
+
+                    <ul class="mt-4 space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                        <template x-for="(item, index) in items" :key="item.id">
+                            <li
+                                draggable="true"
+                                @dragstart="dragStart(index)"
+                                @dragover.prevent
+                                @drop.prevent="drop(index)"
+                                class="flex items-center gap-3 rounded-md border border-zinc-200 bg-white px-3 py-2 cursor-move select-none hover:bg-zinc-50"
+                            >
+                                <span class="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-700" x-text="index + 1"></span>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-zinc-900 truncate" x-text="item.nama"></p>
+                                    <p class="text-xs text-zinc-500 truncate" x-text="item.judul_alat"></p>
+                                </div>
+                            </li>
+                        </template>
+                    </ul>
+
+                    <div class="mt-6 flex justify-end gap-2">
+                        <button type="button" wire:click="closeReorder" class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Batal</button>
+                        <button type="button" @click="save" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">Simpan Urutan</button>
+                    </div>
                 </div>
             </div>
         </div>
