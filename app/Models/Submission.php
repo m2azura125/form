@@ -33,17 +33,20 @@ class Submission extends Model
     public const TIPE_PROJECT = 'project';
     public const TIPE_CETAK_PCB = 'cetak_pcb';
     public const TIPE_CETAK_3D_PRINTING = 'cetak_3d_printing';
+    public const TIPE_LAIN_LAIN = 'lain_lain';
 
     public const TIPES = [
         self::TIPE_PROJECT,
         self::TIPE_CETAK_PCB,
         self::TIPE_CETAK_3D_PRINTING,
+        self::TIPE_LAIN_LAIN,
     ];
 
     public const TIPE_LABELS = [
         self::TIPE_PROJECT => 'Project',
         self::TIPE_CETAK_PCB => 'Cetak PCB',
         self::TIPE_CETAK_3D_PRINTING => 'Cetak 3D Printing',
+        self::TIPE_LAIN_LAIN => 'Lain-lain',
     ];
 
     public const METODE_TUNAI = 'tunai';
