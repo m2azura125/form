@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\SubmissionExportController;
 use App\Http\Controllers\Admin\SubmissionStrukController;
+use App\Livewire\Actions\Logout;
 use App\Livewire\Admin\Dashboard;
 use App\Livewire\Public\Antrian;
 use App\Livewire\Public\SubmissionForm;
@@ -12,6 +13,12 @@ Route::get('/antrian', Antrian::class)->name('antrian');
 
 Route::middleware(['auth'])->group(function () {
     Route::view('profile', 'profile')->name('profile');
+
+    Route::post('/logout', function (Logout $logout) {
+        $logout();
+
+        return redirect()->route('home');
+    })->name('logout');
 
     Route::prefix('admin')->name('admin.')->group(function () {
         Route::redirect('/', '/admin/dashboard');

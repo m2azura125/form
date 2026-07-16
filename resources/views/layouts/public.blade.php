@@ -38,13 +38,35 @@
                         >
                             List Antrian
                         </a>
-                        <a
-                            href="{{ route('login') }}"
-                            wire:navigate
-                            class="inline-flex items-center rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
-                        >
-                            Login Admin
-                        </a>
+                        @auth
+                            <span class="hidden sm:inline-flex items-center text-sm text-zinc-500">
+                                {{ auth()->user()->name }}
+                            </span>
+                            <a
+                                href="{{ route('admin.dashboard') }}"
+                                wire:navigate
+                                class="inline-flex items-center rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+                            >
+                                Dashboard
+                            </a>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <button
+                                    type="submit"
+                                    class="inline-flex items-center rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+                                >
+                                    Keluar
+                                </button>
+                            </form>
+                        @else
+                            <a
+                                href="{{ route('login') }}"
+                                wire:navigate
+                                class="inline-flex items-center rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+                            >
+                                Login Admin
+                            </a>
+                        @endauth
                     </nav>
                 </div>
             </header>
