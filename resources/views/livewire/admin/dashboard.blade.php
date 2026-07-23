@@ -36,6 +36,26 @@
     </div>
 
     @unless ($trash)
+        {{-- Bagi hasil (admin only) --}}
+        <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-sm font-medium text-amber-900">Bagi Hasil Pendapatan (Selesai)</p>
+                <p class="text-sm font-semibold tabular-nums text-amber-900">
+                    Total: Rp {{ number_format($totalPendapatan, 0, ',', '.') }}
+                </p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                @foreach ($bagiHasil as $nama => $bagian)
+                    <div class="bg-white border border-amber-200 rounded-lg px-4 py-3">
+                        <p class="text-xs text-zinc-500">{{ $nama }} ({{ rtrim(rtrim(number_format($bagian['persen'] * 100, 1), '0'), '.') }}%)</p>
+                        <p class="mt-1 text-lg font-semibold tabular-nums text-amber-700">
+                            Rp {{ number_format($bagian['nominal'], 0, ',', '.') }}
+                        </p>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+
         {{-- Summary cards --}}
         <div class="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
             <div class="bg-white border border-zinc-200 rounded-lg px-4 py-3">

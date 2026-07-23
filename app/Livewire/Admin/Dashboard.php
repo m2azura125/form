@@ -18,6 +18,12 @@ class Dashboard extends Component
 
     private const SORTABLE = ['nama', 'tanggal_pengajuan', 'deadline', 'urutan'];
 
+    private const BAGI_HASIL_PERSEN = [
+        'Toko' => 0.23,
+        'Krisna' => 0.385,
+        'Aldo' => 0.385,
+    ];
+
     private const TRANSIENT_PROPERTIES = [
         'activeId', 'modalMode', 'confirmingDeleteId',
         'acceptingId', 'acceptBiayaJasa', 'acceptDeadline',
@@ -410,9 +416,18 @@ class Dashboard extends Component
             'ditolak' => Submission::query()->where('status', Submission::STATUS_DITOLAK)->count(),
         ];
 
+        $totalPendapatan = (int) Submission::query()->where('status', Submission::STATUS_SELESAI)->sum('biaya_jasa');
+
+        $bagiHasil = collect(self::BAGI_HASIL_PERSEN)->map(fn ($persen) => [
+            'persen' => $persen,
+            'nominal' => (int) round($totalPendapatan * $persen),
+        ])->all();
+
         return view('livewire.admin.dashboard', [
             'submissions' => $this->filteredQuery()->paginate($this->perPage),
             'summary' => $summary,
+            'totalPendapatan' => $totalPendapatan,
+            'bagiHasil' => $bagiHasil,
             'activeSubmission' => $this->activeId ? Submission::query()->withTrashed()->find($this->activeId) : null,
             'completingSubmission' => $this->completingId ? Submission::query()->find($this->completingId) : null,
         ]);
