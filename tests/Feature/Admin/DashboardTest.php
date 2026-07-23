@@ -119,7 +119,7 @@ class DashboardTest extends TestCase
     public function test_accepting_a_new_submission_requires_biaya_jasa_and_deadline(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU]);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU, 'tipe' => Submission::TIPE_PROJECT]);
 
         $this->actingAs($admin);
 
@@ -138,7 +138,7 @@ class DashboardTest extends TestCase
     public function test_accepting_a_new_submission_sets_biaya_jasa_deadline_and_status_diproses(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU]);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU, 'tipe' => Submission::TIPE_PROJECT]);
         $newDeadline = now()->addDays(14)->format('Y-m-d');
 
         $this->actingAs($admin);
@@ -156,6 +156,48 @@ class DashboardTest extends TestCase
             'biaya_jasa' => 750000,
         ]);
         $this->assertSame($newDeadline, $submission->fresh()->deadline->format('Y-m-d'));
+    }
+
+    public function test_accepting_a_lain_lain_submission_requires_penerima(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU, 'tipe' => Submission::TIPE_LAIN_LAIN]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('openAccept', $submission->id)
+            ->set('acceptBiayaJasa', '100000')
+            ->set('acceptDeadline', $submission->deadline->format('Y-m-d'))
+            ->call('acceptSubmission')
+            ->assertHasErrors(['acceptPenerima']);
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => Submission::STATUS_BARU,
+        ]);
+    }
+
+    public function test_accepting_a_lain_lain_submission_saves_penerima(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU, 'tipe' => Submission::TIPE_LAIN_LAIN]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('openAccept', $submission->id)
+            ->set('acceptBiayaJasa', '100000')
+            ->set('acceptDeadline', $submission->deadline->format('Y-m-d'))
+            ->set('acceptPenerima', Submission::PENERIMA_KRISNA)
+            ->call('acceptSubmission')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => Submission::STATUS_DIPROSES,
+            'penerima' => Submission::PENERIMA_KRISNA,
+        ]);
     }
 
     public function test_rejecting_a_new_submission_sets_status_ditolak(): void

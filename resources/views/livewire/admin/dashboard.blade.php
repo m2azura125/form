@@ -44,15 +44,22 @@
                     Total: Rp {{ number_format($totalPendapatan, 0, ',', '.') }}
                 </p>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                @foreach ($bagiHasil as $nama => $bagian)
+            <p class="text-xs text-amber-700 mb-3">Bagi hasil (23% / 38,5% / 38,5%) dihitung dari tipe Project + Lain-lain sesuai penerima yang ditentukan. Cetak PCB &amp; Cetak 3D Printing (serta Lain-lain tanpa penerima) masuk ke Lainnya.</p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                @foreach ($bagiHasil as $bagian)
                     <div class="bg-white border border-amber-200 rounded-lg px-4 py-3">
-                        <p class="text-xs text-zinc-500">{{ $nama }} ({{ rtrim(rtrim(number_format($bagian['persen'] * 100, 1), '0'), '.') }}%)</p>
+                        <p class="text-xs text-zinc-500">{{ $bagian['label'] }} ({{ rtrim(rtrim(number_format($bagian['persen'] * 100, 1), '0'), '.') }}%)</p>
                         <p class="mt-1 text-lg font-semibold tabular-nums text-amber-700">
                             Rp {{ number_format($bagian['nominal'], 0, ',', '.') }}
                         </p>
                     </div>
                 @endforeach
+                <div class="bg-white border border-amber-200 rounded-lg px-4 py-3">
+                    <p class="text-xs text-zinc-500">Lainnya (PCB/3D Printing)</p>
+                    <p class="mt-1 text-lg font-semibold tabular-nums text-amber-700">
+                        Rp {{ number_format($totalOther, 0, ',', '.') }}
+                    </p>
+                </div>
             </div>
         </div>
 
@@ -331,6 +338,9 @@
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Tgl Pengajuan</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->tanggal_pengajuan->format('d-m-Y') }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Deadline</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->deadline->format('d-m-Y') }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Biaya Jasa</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->biayaJasaFormatted() ?? 'Belum ditentukan' }}</dd></div>
+                            @if ($activeSubmission->tipe === \App\Models\Submission::TIPE_LAIN_LAIN)
+                                <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Penerima</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->penerimaLabel() ?? 'Belum ditentukan' }}</dd></div>
+                            @endif
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Dibuat</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->created_at->format('d-m-Y H:i') }}</dd></div>
                         </dl>
 
@@ -438,6 +448,19 @@
                             <input type="date" wire:model.blur="acceptDeadline" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                             @error('acceptDeadline') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
                         </div>
+
+                        @if ($acceptingSubmission?->tipe === \App\Models\Submission::TIPE_LAIN_LAIN)
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-700">Penerima</label>
+                                <select wire:model.blur="acceptPenerima" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    <option value="">Pilih penerima</option>
+                                    @foreach (\App\Models\Submission::PENERIMA_LABELS as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @error('acceptPenerima') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                        @endif
 
                         <div class="flex justify-end gap-2 pt-2">
                             <button type="button" wire:click="closeAccept" class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Batal</button>

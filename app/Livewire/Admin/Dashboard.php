@@ -19,14 +19,14 @@ class Dashboard extends Component
     private const SORTABLE = ['nama', 'tanggal_pengajuan', 'deadline', 'urutan'];
 
     private const BAGI_HASIL_PERSEN = [
-        'Toko' => 0.23,
-        'Krisna' => 0.385,
-        'Aldo' => 0.385,
+        Submission::PENERIMA_TOKO => 0.23,
+        Submission::PENERIMA_KRISNA => 0.385,
+        Submission::PENERIMA_ALDO => 0.385,
     ];
 
     private const TRANSIENT_PROPERTIES = [
         'activeId', 'modalMode', 'confirmingDeleteId',
-        'acceptingId', 'acceptBiayaJasa', 'acceptDeadline',
+        'acceptingId', 'acceptBiayaJasa', 'acceptDeadline', 'acceptPenerima',
         'reordering', 'reorderItems',
         'completingId', 'completeMetodePembayaran', 'completeJumlahBayar',
     ];
@@ -77,6 +77,8 @@ class Dashboard extends Component
     public string $acceptBiayaJasa = '';
 
     public string $acceptDeadline = '';
+
+    public string $acceptPenerima = '';
 
     public bool $reordering = false;
 
@@ -200,6 +202,7 @@ class Dashboard extends Component
         $this->acceptingId = $id;
         $this->acceptBiayaJasa = '';
         $this->acceptDeadline = $submission->deadline->format('Y-m-d');
+        $this->acceptPenerima = '';
         $this->resetValidation();
     }
 
@@ -208,6 +211,7 @@ class Dashboard extends Component
         $this->acceptingId = null;
         $this->acceptBiayaJasa = '';
         $this->acceptDeadline = '';
+        $this->acceptPenerima = '';
         $this->resetValidation();
     }
 
@@ -221,22 +225,33 @@ class Dashboard extends Component
             return;
         }
 
-        $this->validate([
+        $rules = [
             'acceptBiayaJasa' => ['required', 'integer', 'min:0'],
             'acceptDeadline' => ['required', 'date', 'after_or_equal:'.$submission->tanggal_pengajuan->format('Y-m-d')],
-        ], [
+        ];
+
+        $messages = [
             'acceptBiayaJasa.required' => 'Biaya jasa wajib diisi.',
             'acceptBiayaJasa.integer' => 'Biaya jasa harus berupa angka.',
             'acceptBiayaJasa.min' => 'Biaya jasa tidak boleh negatif.',
             'acceptDeadline.required' => 'Deadline wajib diisi.',
             'acceptDeadline.date' => 'Deadline tidak valid.',
             'acceptDeadline.after_or_equal' => 'Deadline harus sama atau setelah tanggal pengajuan.',
-        ]);
+        ];
+
+        if ($submission->tipe === Submission::TIPE_LAIN_LAIN) {
+            $rules['acceptPenerima'] = ['required', 'in:'.implode(',', Submission::PENERIMAS)];
+            $messages['acceptPenerima.required'] = 'Penerima wajib dipilih.';
+            $messages['acceptPenerima.in'] = 'Penerima tidak valid.';
+        }
+
+        $this->validate($rules, $messages);
 
         $submission->update([
             'status' => Submission::STATUS_DIPROSES,
             'biaya_jasa' => (int) $this->acceptBiayaJasa,
             'deadline' => $this->acceptDeadline,
+            'penerima' => $submission->tipe === Submission::TIPE_LAIN_LAIN ? $this->acceptPenerima : null,
         ]);
 
         $this->closeAccept();
@@ -416,20 +431,51 @@ class Dashboard extends Component
             'ditolak' => Submission::query()->where('status', Submission::STATUS_DITOLAK)->count(),
         ];
 
-        $totalPendapatan = (int) Submission::query()->where('status', Submission::STATUS_SELESAI)->sum('biaya_jasa');
+        $totalProject = (int) Submission::query()
+            ->where('status', Submission::STATUS_SELESAI)
+            ->where('tipe', Submission::TIPE_PROJECT)
+            ->sum('biaya_jasa');
 
-        $bagiHasil = collect(self::BAGI_HASIL_PERSEN)->map(fn ($persen) => [
-            'persen' => $persen,
-            'nominal' => (int) round($totalPendapatan * $persen),
-        ])->all();
+        $lainLainByPenerima = Submission::query()
+            ->where('status', Submission::STATUS_SELESAI)
+            ->where('tipe', Submission::TIPE_LAIN_LAIN)
+            ->whereNotNull('penerima')
+            ->selectRaw('penerima, SUM(biaya_jasa) as total')
+            ->groupBy('penerima')
+            ->pluck('total', 'penerima');
+
+        $totalOther = (int) Submission::query()
+            ->where('status', Submission::STATUS_SELESAI)
+            ->where(function (Builder $q) {
+                $q->whereIn('tipe', [Submission::TIPE_CETAK_PCB, Submission::TIPE_CETAK_3D_PRINTING])
+                    ->orWhere(function (Builder $q2) {
+                        $q2->where('tipe', Submission::TIPE_LAIN_LAIN)->whereNull('penerima');
+                    });
+            })
+            ->sum('biaya_jasa');
+
+        $bagiHasil = collect(self::BAGI_HASIL_PERSEN)->map(function ($persen, $penerima) use ($totalProject, $lainLainByPenerima) {
+            $dariProject = (int) round($totalProject * $persen);
+            $dariLainLain = (int) ($lainLainByPenerima[$penerima] ?? 0);
+
+            return [
+                'label' => Submission::PENERIMA_LABELS[$penerima],
+                'persen' => $persen,
+                'nominal' => $dariProject + $dariLainLain,
+            ];
+        })->all();
+
+        $totalPendapatan = $totalProject + $totalOther + (int) $lainLainByPenerima->sum();
 
         return view('livewire.admin.dashboard', [
             'submissions' => $this->filteredQuery()->paginate($this->perPage),
             'summary' => $summary,
             'totalPendapatan' => $totalPendapatan,
+            'totalOther' => $totalOther,
             'bagiHasil' => $bagiHasil,
             'activeSubmission' => $this->activeId ? Submission::query()->withTrashed()->find($this->activeId) : null,
             'completingSubmission' => $this->completingId ? Submission::query()->find($this->completingId) : null,
+            'acceptingSubmission' => $this->acceptingId ? Submission::query()->find($this->acceptingId) : null,
         ]);
     }
 }

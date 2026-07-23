@@ -68,6 +68,22 @@ class Submission extends Model
         self::METODE_E_WALLET => 'E-Wallet',
     ];
 
+    public const PENERIMA_TOKO = 'toko';
+    public const PENERIMA_KRISNA = 'krisna';
+    public const PENERIMA_ALDO = 'aldo';
+
+    public const PENERIMAS = [
+        self::PENERIMA_TOKO,
+        self::PENERIMA_KRISNA,
+        self::PENERIMA_ALDO,
+    ];
+
+    public const PENERIMA_LABELS = [
+        self::PENERIMA_TOKO => 'Toko',
+        self::PENERIMA_KRISNA => 'Krisna',
+        self::PENERIMA_ALDO => 'Aldo',
+    ];
+
     protected $fillable = [
         'nama',
         'asal_kampus',
@@ -81,6 +97,7 @@ class Submission extends Model
         'urutan',
         'metode_pembayaran',
         'jumlah_bayar',
+        'penerima',
     ];
 
     protected function casts(): array
@@ -128,6 +145,13 @@ class Submission extends Model
     public function jumlahBayarFormatted(): ?string
     {
         return $this->jumlah_bayar !== null ? 'Rp '.number_format($this->jumlah_bayar, 0, ',', '.') : null;
+    }
+
+    public function penerimaLabel(): ?string
+    {
+        return $this->penerima !== null
+            ? (self::PENERIMA_LABELS[$this->penerima] ?? $this->penerima)
+            : null;
     }
 
     public function kembalian(): int
