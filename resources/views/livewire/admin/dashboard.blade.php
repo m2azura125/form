@@ -44,7 +44,7 @@
                     Total: Rp {{ number_format($totalPendapatan, 0, ',', '.') }}
                 </p>
             </div>
-            <p class="text-xs text-amber-700 mb-3">Bagi hasil (23% / 38,5% / 38,5%) dihitung dari tipe Project + Lain-lain sesuai penerima yang ditentukan. Cetak PCB &amp; Cetak 3D Printing (serta Lain-lain tanpa penerima) masuk ke Lainnya.</p>
+            <p class="text-xs text-amber-700 mb-3">Bagi hasil (23% / 38,5% / 38,5%) dihitung setelah dipotong pembagian prioritas dari tipe Project + Lain-lain sesuai penerima. Sisa potongan prioritas, Cetak PCB &amp; Cetak 3D Printing masuk ke Lainnya.</p>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 @foreach ($bagiHasil as $bagian)
                     <div class="bg-white border border-amber-200 rounded-lg px-4 py-3">
@@ -338,8 +338,15 @@
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Tgl Pengajuan</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->tanggal_pengajuan->format('d-m-Y') }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Deadline</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->deadline->format('d-m-Y') }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Biaya Jasa</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->biayaJasaFormatted() ?? 'Belum ditentukan' }}</dd></div>
+                            @if ($activeSubmission->pembagian_prioritas)
+                                <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Pembagian Prioritas</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->pembagianPrioritasFormatted() }}</dd></div>
+                            @endif
                             @if ($activeSubmission->tipe === \App\Models\Submission::TIPE_LAIN_LAIN)
                                 <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Penerima</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->penerimaLabel() ?? 'Belum ditentukan' }}</dd></div>
+                            @endif
+                            @if ($activeSubmission->status === \App\Models\Submission::STATUS_SELESAI)
+                                <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Metode Pembayaran</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->metodePembayaranLabel() ?? '—' }}</dd></div>
+                                <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Jumlah Dibayar</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->jumlahBayarFormatted() ?? '—' }}</dd></div>
                             @endif
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Dibuat</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->created_at->format('d-m-Y H:i') }}</dd></div>
                         </dl>
@@ -372,7 +379,7 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-zinc-700">Tipe</label>
-                                <select wire:model.blur="form.tipe" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                <select wire:model.live="form.tipe" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                     @foreach (\App\Models\Submission::TIPE_LABELS as $value => $label)
                                         <option value="{{ $value }}">{{ $label }}</option>
                                     @endforeach
@@ -401,7 +408,7 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-zinc-700">Status</label>
-                                <select wire:model.blur="form.status" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                <select wire:model.live="form.status" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                     @foreach (\App\Models\Submission::STATUS_LABELS as $value => $label)
                                         <option value="{{ $value }}">{{ $label }}</option>
                                     @endforeach
@@ -414,6 +421,46 @@
                                 <input type="number" min="0" step="1000" wire:model.blur="form.biaya_jasa" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                 @error('form.biaya_jasa') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
                             </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-700">Pembagian Prioritas (Rp)</label>
+                                <input type="number" min="0" step="1000" wire:model.blur="form.pembagian_prioritas" placeholder="0" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                <p class="mt-1 text-xs text-zinc-500">Nominal ini dipotong terlebih dahulu sebelum pembagian persentase (23% / 38,5% / 38,5%).</p>
+                                @error('form.pembagian_prioritas') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                            </div>
+
+                            @if ($form->tipe === \App\Models\Submission::TIPE_LAIN_LAIN)
+                                <div>
+                                    <label class="block text-sm font-medium text-zinc-700">Penerima</label>
+                                    <select wire:model.blur="form.penerima" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                        <option value="">Pilih penerima</option>
+                                        @foreach (\App\Models\Submission::PENERIMA_LABELS as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('form.penerima') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                            @endif
+
+                            @if ($form->status === \App\Models\Submission::STATUS_SELESAI)
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-zinc-700">Dibayar Lewat</label>
+                                        <select wire:model.blur="form.metode_pembayaran" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                            <option value="">Pilih metode</option>
+                                            @foreach (\App\Models\Submission::METODE_PEMBAYARAN_LABELS as $value => $label)
+                                                <option value="{{ $value }}">{{ $label }}</option>
+                                            @endforeach
+                                        </select>
+                                        @error('form.metode_pembayaran') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-zinc-700">Jumlah Dibayarkan (Rp)</label>
+                                        <input type="number" min="0" step="1000" wire:model.blur="form.jumlah_bayar" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                        @error('form.jumlah_bayar') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                                    </div>
+                                </div>
+                            @endif
 
                             <div class="flex justify-end gap-2 pt-2">
                                 <button type="button" wire:click="closeModal" class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Batal</button>

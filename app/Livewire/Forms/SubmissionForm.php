@@ -16,6 +16,10 @@ class SubmissionForm extends Form
     public string $deadline = '';
     public string $status = Submission::STATUS_BARU;
     public string $biaya_jasa = '';
+    public string $pembagian_prioritas = '';
+    public string $penerima = '';
+    public string $metode_pembayaran = '';
+    public string $jumlah_bayar = '';
 
     public bool $includeStatus = false;
 
@@ -34,6 +38,32 @@ class SubmissionForm extends Form
         if ($this->includeStatus) {
             $rules['status'] = ['required', 'in:'.implode(',', Submission::STATUSES)];
             $rules['biaya_jasa'] = ['nullable', 'integer', 'min:0'];
+            $rules['pembagian_prioritas'] = ['nullable', 'integer', 'min:0'];
+
+            if ($this->biaya_jasa !== '') {
+                $rules['pembagian_prioritas'][] = 'lte:biaya_jasa';
+            }
+
+            if ($this->tipe === Submission::TIPE_LAIN_LAIN) {
+                if ($this->status !== Submission::STATUS_BARU) {
+                    $rules['penerima'] = ['required', 'in:'.implode(',', Submission::PENERIMAS)];
+                } else {
+                    $rules['penerima'] = ['nullable', 'in:'.implode(',', Submission::PENERIMAS)];
+                }
+            } else {
+                $rules['penerima'] = ['nullable'];
+            }
+
+            if ($this->status === Submission::STATUS_SELESAI) {
+                $rules['metode_pembayaran'] = ['required', 'in:'.implode(',', Submission::METODE_PEMBAYARANS)];
+                $rules['jumlah_bayar'] = ['required', 'integer', 'min:0'];
+                if ($this->biaya_jasa !== '') {
+                    $rules['jumlah_bayar'][] = 'gte:biaya_jasa';
+                }
+            } else {
+                $rules['metode_pembayaran'] = ['nullable', 'in:'.implode(',', Submission::METODE_PEMBAYARANS)];
+                $rules['jumlah_bayar'] = ['nullable', 'integer', 'min:0'];
+            }
         }
 
         return $rules;
@@ -64,6 +94,17 @@ class SubmissionForm extends Form
             'status.in' => 'Status tidak valid.',
             'biaya_jasa.integer' => 'Biaya jasa harus berupa angka.',
             'biaya_jasa.min' => 'Biaya jasa tidak boleh negatif.',
+            'pembagian_prioritas.integer' => 'Pembagian prioritas harus berupa angka.',
+            'pembagian_prioritas.min' => 'Pembagian prioritas tidak boleh negatif.',
+            'pembagian_prioritas.lte' => 'Pembagian prioritas tidak boleh lebih besar dari biaya jasa.',
+            'penerima.required' => 'Penerima wajib dipilih.',
+            'penerima.in' => 'Penerima tidak valid.',
+            'metode_pembayaran.required' => 'Metode pembayaran wajib dipilih.',
+            'metode_pembayaran.in' => 'Metode pembayaran tidak valid.',
+            'jumlah_bayar.required' => 'Jumlah bayar wajib diisi.',
+            'jumlah_bayar.integer' => 'Jumlah bayar harus berupa angka.',
+            'jumlah_bayar.min' => 'Jumlah bayar tidak boleh negatif.',
+            'jumlah_bayar.gte' => 'Jumlah bayar tidak boleh kurang dari biaya jasa.',
         ];
     }
 
@@ -78,6 +119,10 @@ class SubmissionForm extends Form
         $this->deadline = $submission->deadline->format('Y-m-d');
         $this->status = $submission->status;
         $this->biaya_jasa = $submission->biaya_jasa !== null ? (string) $submission->biaya_jasa : '';
+        $this->pembagian_prioritas = $submission->pembagian_prioritas !== null ? (string) $submission->pembagian_prioritas : '';
+        $this->penerima = $submission->penerima ?? '';
+        $this->metode_pembayaran = $submission->metode_pembayaran ?? '';
+        $this->jumlah_bayar = $submission->jumlah_bayar !== null ? (string) $submission->jumlah_bayar : '';
     }
 
     public function payload(): array
@@ -95,6 +140,10 @@ class SubmissionForm extends Form
         if ($this->includeStatus) {
             $data['status'] = $this->status;
             $data['biaya_jasa'] = $this->biaya_jasa !== '' ? (int) $this->biaya_jasa : null;
+            $data['pembagian_prioritas'] = $this->pembagian_prioritas !== '' ? (int) $this->pembagian_prioritas : 0;
+            $data['penerima'] = ($this->tipe === Submission::TIPE_LAIN_LAIN && $this->penerima !== '') ? $this->penerima : null;
+            $data['metode_pembayaran'] = $this->metode_pembayaran !== '' ? $this->metode_pembayaran : null;
+            $data['jumlah_bayar'] = $this->jumlah_bayar !== '' ? (int) $this->jumlah_bayar : null;
         }
 
         return $data;

@@ -93,6 +93,7 @@ class Submission extends Model
         'tanggal_pengajuan',
         'deadline',
         'biaya_jasa',
+        'pembagian_prioritas',
         'status',
         'urutan',
         'metode_pembayaran',
@@ -106,6 +107,7 @@ class Submission extends Model
             'tanggal_pengajuan' => 'date',
             'deadline' => 'date',
             'biaya_jasa' => 'integer',
+            'pembagian_prioritas' => 'integer',
             'urutan' => 'integer',
             'jumlah_bayar' => 'integer',
         ];
@@ -133,6 +135,11 @@ class Submission extends Model
     public function biayaJasaFormatted(): ?string
     {
         return $this->biaya_jasa !== null ? 'Rp '.number_format($this->biaya_jasa, 0, ',', '.') : null;
+    }
+
+    public function pembagianPrioritasFormatted(): ?string
+    {
+        return $this->pembagian_prioritas !== null ? 'Rp '.number_format($this->pembagian_prioritas, 0, ',', '.') : null;
     }
 
     public function metodePembayaranLabel(): ?string

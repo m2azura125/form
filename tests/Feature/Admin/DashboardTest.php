@@ -100,7 +100,7 @@ class DashboardTest extends TestCase
     public function test_admin_can_update_submission_status_via_edit_form(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU]);
+        $submission = Submission::factory()->create(['status' => Submission::STATUS_BARU, 'tipe' => Submission::TIPE_PROJECT]);
 
         $this->actingAs($admin);
 
@@ -235,7 +235,11 @@ class DashboardTest extends TestCase
     public function test_completing_a_processed_submission_sets_status_selesai(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $submission = Submission::factory()->create(['status' => Submission::STATUS_DIPROSES, 'biaya_jasa' => 200000]);
+        $submission = Submission::factory()->create([
+            'status' => Submission::STATUS_DIPROSES,
+            'biaya_jasa' => 200000,
+            'tipe' => Submission::TIPE_PROJECT,
+        ]);
 
         $this->actingAs($admin);
 
@@ -257,7 +261,11 @@ class DashboardTest extends TestCase
     public function test_completing_a_submission_requires_jumlah_bayar_at_least_biaya_jasa(): void
     {
         $admin = User::factory()->create(['role' => 'admin']);
-        $submission = Submission::factory()->create(['status' => Submission::STATUS_DIPROSES, 'biaya_jasa' => 200000]);
+        $submission = Submission::factory()->create([
+            'status' => Submission::STATUS_DIPROSES,
+            'biaya_jasa' => 200000,
+            'tipe' => Submission::TIPE_PROJECT,
+        ]);
 
         $this->actingAs($admin);
 
@@ -288,5 +296,84 @@ class DashboardTest extends TestCase
             'id' => $submission->id,
             'status' => Submission::STATUS_BARU,
         ]);
+    }
+
+    public function test_admin_can_edit_penerima_for_completed_lain_lain_submission(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create([
+            'status' => Submission::STATUS_SELESAI,
+            'tipe' => Submission::TIPE_LAIN_LAIN,
+            'penerima' => Submission::PENERIMA_KRISNA,
+            'biaya_jasa' => 150000,
+            'jumlah_bayar' => 150000,
+            'metode_pembayaran' => Submission::METODE_TUNAI,
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('openEdit', $submission->id)
+            ->set('form.penerima', Submission::PENERIMA_ALDO)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'penerima' => Submission::PENERIMA_ALDO,
+            'status' => Submission::STATUS_SELESAI,
+        ]);
+    }
+
+    public function test_completing_lain_lain_submission_saves_selected_penerima(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $submission = Submission::factory()->create([
+            'status' => Submission::STATUS_DIPROSES,
+            'tipe' => Submission::TIPE_LAIN_LAIN,
+            'penerima' => Submission::PENERIMA_KRISNA,
+            'biaya_jasa' => 200000,
+        ]);
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('openComplete', $submission->id)
+            ->set('completeMetodePembayaran', Submission::METODE_TRANSFER)
+            ->set('completeJumlahBayar', '200000')
+            ->set('completePenerima', Submission::PENERIMA_ALDO)
+            ->call('completeSubmission')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('submissions', [
+            'id' => $submission->id,
+            'status' => Submission::STATUS_SELESAI,
+            'penerima' => Submission::PENERIMA_ALDO,
+        ]);
+    }
+
+    public function test_pembagian_prioritas_deducted_before_percentage_split(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Submission::factory()->create([
+            'status' => Submission::STATUS_SELESAI,
+            'tipe' => Submission::TIPE_PROJECT,
+            'biaya_jasa' => 100000,
+            'pembagian_prioritas' => 20000,
+        ]);
+
+        $this->actingAs($admin);
+
+        // Project net = 100,000 - 20,000 = 80,000.
+        // Toko (23%) = 18,400. Krisna (38.5%) = 30,800. Aldo (38.5%) = 30,800.
+        // Other (Prioritas) = 20,000.
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->assertViewHas('bagiHasil', function ($bagiHasil) {
+                return $bagiHasil[Submission::PENERIMA_TOKO]['nominal'] === 18400
+                    && $bagiHasil[Submission::PENERIMA_KRISNA]['nominal'] === 30800
+                    && $bagiHasil[Submission::PENERIMA_ALDO]['nominal'] === 30800;
+            })
+            ->assertViewHas('totalOther', 20000)
+            ->assertViewHas('totalPendapatan', 100000);
     }
 }
