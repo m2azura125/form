@@ -360,6 +360,7 @@ class DashboardTest extends TestCase
             'tipe' => Submission::TIPE_PROJECT,
             'biaya_jasa' => 100000,
             'pembagian_prioritas' => 20000,
+            'penerima_prioritas' => 'lainnya',
         ]);
 
         $this->actingAs($admin);
@@ -375,5 +376,33 @@ class DashboardTest extends TestCase
             })
             ->assertViewHas('totalOther', 20000)
             ->assertViewHas('totalPendapatan', 100000);
+    }
+
+    public function test_pembagian_prioritas_assigned_to_specific_person_krisna(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        Submission::factory()->create([
+            'status' => Submission::STATUS_SELESAI,
+            'tipe' => Submission::TIPE_PROJECT,
+            'biaya_jasa' => 700000,
+            'pembagian_prioritas' => 200000,
+            'penerima_prioritas' => 'krisna',
+        ]);
+
+        $this->actingAs($admin);
+
+        // Total = 700,000. Prioritas Krisna = 200,000. Net = 500,000.
+        // Toko (23% of 500k) = 115,000.
+        // Krisna (38.5% of 500k = 192,500 + 200,000 prioritas) = 392,500.
+        // Aldo (38.5% of 500k) = 192,500.
+        // Total Other = 0.
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->assertViewHas('bagiHasil', function ($bagiHasil) {
+                return $bagiHasil[Submission::PENERIMA_TOKO]['nominal'] === 115000
+                    && $bagiHasil[Submission::PENERIMA_KRISNA]['nominal'] === 392500
+                    && $bagiHasil[Submission::PENERIMA_ALDO]['nominal'] === 192500;
+            })
+            ->assertViewHas('totalOther', 0)
+            ->assertViewHas('totalPendapatan', 700000);
     }
 }

@@ -28,7 +28,7 @@ class Dashboard extends Component
         'activeId', 'modalMode', 'confirmingDeleteId',
         'acceptingId', 'acceptBiayaJasa', 'acceptDeadline', 'acceptPenerima',
         'reordering', 'reorderItems',
-        'completingId', 'completeMetodePembayaran', 'completeJumlahBayar', 'completePenerima',
+        'completingId', 'completeMetodePembayaran', 'completeJumlahBayar', 'completePenerima', 'completePembagianPrioritas', 'completePenerimaPrioritas',
     ];
 
     #[Url(as: 'q', history: true)]
@@ -91,6 +91,10 @@ class Dashboard extends Component
     public string $completeJumlahBayar = '';
 
     public string $completePenerima = '';
+
+    public string $completePembagianPrioritas = '';
+
+    public string $completePenerimaPrioritas = 'lainnya';
 
     public function updated(string $name): void
     {
@@ -318,6 +322,8 @@ class Dashboard extends Component
         $this->completeMetodePembayaran = Submission::METODE_TUNAI;
         $this->completeJumlahBayar = (string) ($submission->biaya_jasa ?? 0);
         $this->completePenerima = $submission->penerima ?? '';
+        $this->completePembagianPrioritas = $submission->pembagian_prioritas !== null ? (string) $submission->pembagian_prioritas : '';
+        $this->completePenerimaPrioritas = $submission->penerima_prioritas ?? 'lainnya';
         $this->resetValidation();
     }
 
@@ -327,6 +333,8 @@ class Dashboard extends Component
         $this->completeMetodePembayaran = Submission::METODE_TUNAI;
         $this->completeJumlahBayar = '';
         $this->completePenerima = '';
+        $this->completePembagianPrioritas = '';
+        $this->completePenerimaPrioritas = 'lainnya';
         $this->resetValidation();
     }
 
@@ -343,7 +351,18 @@ class Dashboard extends Component
         $rules = [
             'completeMetodePembayaran' => ['required', 'in:'.implode(',', Submission::METODE_PEMBAYARANS)],
             'completeJumlahBayar' => ['required', 'integer', 'min:0'],
+            'completePembagianPrioritas' => ['nullable', 'integer', 'min:0'],
         ];
+
+        if ($submission->biaya_jasa !== null && $this->completePembagianPrioritas !== '') {
+            $rules['completePembagianPrioritas'][] = 'lte:'.($submission->biaya_jasa);
+        }
+
+        if ($this->completePembagianPrioritas !== '' && (int) $this->completePembagianPrioritas > 0) {
+            $rules['completePenerimaPrioritas'] = ['required', 'in:'.implode(',', Submission::PENERIMA_PRIORITAS_LIST)];
+        } else {
+            $rules['completePenerimaPrioritas'] = ['nullable', 'in:'.implode(',', Submission::PENERIMA_PRIORITAS_LIST)];
+        }
 
         $messages = [
             'completeMetodePembayaran.required' => 'Metode pembayaran wajib dipilih.',
@@ -351,6 +370,11 @@ class Dashboard extends Component
             'completeJumlahBayar.required' => 'Jumlah bayar wajib diisi.',
             'completeJumlahBayar.integer' => 'Jumlah bayar harus berupa angka.',
             'completeJumlahBayar.min' => 'Jumlah bayar tidak boleh negatif.',
+            'completePembagianPrioritas.integer' => 'Pembagian prioritas harus berupa angka.',
+            'completePembagianPrioritas.min' => 'Pembagian prioritas tidak boleh negatif.',
+            'completePembagianPrioritas.lte' => 'Pembagian prioritas tidak boleh lebih besar dari biaya jasa.',
+            'completePenerimaPrioritas.required' => 'Penerima prioritas wajib dipilih.',
+            'completePenerimaPrioritas.in' => 'Penerima prioritas tidak valid.',
         ];
 
         if ($submission->tipe === Submission::TIPE_LAIN_LAIN) {
@@ -367,11 +391,17 @@ class Dashboard extends Component
             return;
         }
 
+        $prioritasNominal = $this->completePembagianPrioritas !== '' ? (int) $this->completePembagianPrioritas : 0;
+
         $submission->update([
             'status' => Submission::STATUS_SELESAI,
             'metode_pembayaran' => $this->completeMetodePembayaran,
             'jumlah_bayar' => (int) $this->completeJumlahBayar,
             'penerima' => $submission->tipe === Submission::TIPE_LAIN_LAIN ? $this->completePenerima : null,
+            'pembagian_prioritas' => $prioritasNominal,
+            'penerima_prioritas' => ($prioritasNominal > 0)
+                ? ($this->completePenerimaPrioritas !== '' ? $this->completePenerimaPrioritas : Submission::PENERIMA_PRIORITAS_LAINNYA)
+                : null,
         ]);
 
         $this->closeComplete();
@@ -448,10 +478,15 @@ class Dashboard extends Component
 
         $completedSubmissions = Submission::query()
             ->where('status', Submission::STATUS_SELESAI)
-            ->get(['tipe', 'penerima', 'biaya_jasa', 'pembagian_prioritas']);
+            ->get(['tipe', 'penerima', 'biaya_jasa', 'pembagian_prioritas', 'penerima_prioritas']);
 
         $totalProjectNet = 0;
         $lainLainByPenerima = [
+            Submission::PENERIMA_TOKO => 0,
+            Submission::PENERIMA_KRISNA => 0,
+            Submission::PENERIMA_ALDO => 0,
+        ];
+        $prioritasByPenerima = [
             Submission::PENERIMA_TOKO => 0,
             Submission::PENERIMA_KRISNA => 0,
             Submission::PENERIMA_ALDO => 0,
@@ -465,29 +500,37 @@ class Dashboard extends Component
             $net = $biaya - $prioritas;
             $totalPendapatan += $biaya;
 
+            if ($prioritas > 0) {
+                $penerimaPrioritas = $sub->penerima_prioritas ?? Submission::PENERIMA_PRIORITAS_LAINNYA;
+                if (isset($prioritasByPenerima[$penerimaPrioritas])) {
+                    $prioritasByPenerima[$penerimaPrioritas] += $prioritas;
+                } else {
+                    $totalOther += $prioritas;
+                }
+            }
+
             if ($sub->tipe === Submission::TIPE_PROJECT) {
                 $totalProjectNet += $net;
-                $totalOther += $prioritas;
             } elseif ($sub->tipe === Submission::TIPE_LAIN_LAIN) {
                 if ($sub->penerima && isset($lainLainByPenerima[$sub->penerima])) {
                     $lainLainByPenerima[$sub->penerima] += $net;
-                    $totalOther += $prioritas;
                 } else {
-                    $totalOther += $biaya;
+                    $totalOther += $net;
                 }
             } else {
-                $totalOther += $biaya;
+                $totalOther += $net;
             }
         }
 
-        $bagiHasil = collect(self::BAGI_HASIL_PERSEN)->map(function ($persen, $penerima) use ($totalProjectNet, $lainLainByPenerima) {
+        $bagiHasil = collect(self::BAGI_HASIL_PERSEN)->map(function ($persen, $penerima) use ($totalProjectNet, $lainLainByPenerima, $prioritasByPenerima) {
             $dariProject = (int) round($totalProjectNet * $persen);
             $dariLainLain = (int) ($lainLainByPenerima[$penerima] ?? 0);
+            $dariPrioritas = (int) ($prioritasByPenerima[$penerima] ?? 0);
 
             return [
                 'label' => Submission::PENERIMA_LABELS[$penerima],
                 'persen' => $persen,
-                'nominal' => $dariProject + $dariLainLain,
+                'nominal' => $dariProject + $dariLainLain + $dariPrioritas,
             ];
         })->all();
 

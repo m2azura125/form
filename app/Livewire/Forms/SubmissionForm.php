@@ -17,6 +17,7 @@ class SubmissionForm extends Form
     public string $status = Submission::STATUS_BARU;
     public string $biaya_jasa = '';
     public string $pembagian_prioritas = '';
+    public string $penerima_prioritas = 'lainnya';
     public string $penerima = '';
     public string $metode_pembayaran = '';
     public string $jumlah_bayar = '';
@@ -42,6 +43,12 @@ class SubmissionForm extends Form
 
             if ($this->biaya_jasa !== '') {
                 $rules['pembagian_prioritas'][] = 'lte:biaya_jasa';
+            }
+
+            if ($this->pembagian_prioritas !== '' && (int) $this->pembagian_prioritas > 0) {
+                $rules['penerima_prioritas'] = ['required', 'in:'.implode(',', Submission::PENERIMA_PRIORITAS_LIST)];
+            } else {
+                $rules['penerima_prioritas'] = ['nullable', 'in:'.implode(',', Submission::PENERIMA_PRIORITAS_LIST)];
             }
 
             if ($this->tipe === Submission::TIPE_LAIN_LAIN) {
@@ -97,6 +104,8 @@ class SubmissionForm extends Form
             'pembagian_prioritas.integer' => 'Pembagian prioritas harus berupa angka.',
             'pembagian_prioritas.min' => 'Pembagian prioritas tidak boleh negatif.',
             'pembagian_prioritas.lte' => 'Pembagian prioritas tidak boleh lebih besar dari biaya jasa.',
+            'penerima_prioritas.required' => 'Penerima prioritas wajib dipilih.',
+            'penerima_prioritas.in' => 'Penerima prioritas tidak valid.',
             'penerima.required' => 'Penerima wajib dipilih.',
             'penerima.in' => 'Penerima tidak valid.',
             'metode_pembayaran.required' => 'Metode pembayaran wajib dipilih.',
@@ -120,6 +129,7 @@ class SubmissionForm extends Form
         $this->status = $submission->status;
         $this->biaya_jasa = $submission->biaya_jasa !== null ? (string) $submission->biaya_jasa : '';
         $this->pembagian_prioritas = $submission->pembagian_prioritas !== null ? (string) $submission->pembagian_prioritas : '';
+        $this->penerima_prioritas = $submission->penerima_prioritas ?? 'lainnya';
         $this->penerima = $submission->penerima ?? '';
         $this->metode_pembayaran = $submission->metode_pembayaran ?? '';
         $this->jumlah_bayar = $submission->jumlah_bayar !== null ? (string) $submission->jumlah_bayar : '';
@@ -141,6 +151,9 @@ class SubmissionForm extends Form
             $data['status'] = $this->status;
             $data['biaya_jasa'] = $this->biaya_jasa !== '' ? (int) $this->biaya_jasa : null;
             $data['pembagian_prioritas'] = $this->pembagian_prioritas !== '' ? (int) $this->pembagian_prioritas : 0;
+            $data['penerima_prioritas'] = ($data['pembagian_prioritas'] > 0)
+                ? ($this->penerima_prioritas !== '' ? $this->penerima_prioritas : Submission::PENERIMA_PRIORITAS_LAINNYA)
+                : null;
             $data['penerima'] = ($this->tipe === Submission::TIPE_LAIN_LAIN && $this->penerima !== '') ? $this->penerima : null;
             $data['metode_pembayaran'] = $this->metode_pembayaran !== '' ? $this->metode_pembayaran : null;
             $data['jumlah_bayar'] = $this->jumlah_bayar !== '' ? (int) $this->jumlah_bayar : null;

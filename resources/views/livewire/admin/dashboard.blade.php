@@ -44,7 +44,7 @@
                     Total: Rp {{ number_format($totalPendapatan, 0, ',', '.') }}
                 </p>
             </div>
-            <p class="text-xs text-amber-700 mb-3">Bagi hasil (23% / 38,5% / 38,5%) dihitung setelah dipotong pembagian prioritas dari tipe Project + Lain-lain sesuai penerima. Sisa potongan prioritas, Cetak PCB &amp; Cetak 3D Printing masuk ke Lainnya.</p>
+            <p class="text-xs text-amber-700 mb-3">Bagi hasil (23% / 38,5% / 38,5%) dihitung setelah dipotong pembagian prioritas sesuai penerima prioritas. Sisa biaya Cetak PCB &amp; Cetak 3D Printing masuk ke Lainnya.</p>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 @foreach ($bagiHasil as $bagian)
                     <div class="bg-white border border-amber-200 rounded-lg px-4 py-3">
@@ -339,7 +339,7 @@
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Deadline</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->deadline->format('d-m-Y') }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Biaya Jasa</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->biayaJasaFormatted() ?? 'Belum ditentukan' }}</dd></div>
                             @if ($activeSubmission->pembagian_prioritas)
-                                <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Pembagian Prioritas</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->pembagianPrioritasFormatted() }}</dd></div>
+                                <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Pembagian Prioritas</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->pembagianPrioritasFormatted() }} @if ($activeSubmission->penerima_prioritas) ({{ $activeSubmission->penerimaPrioritasLabel() }}) @endif</dd></div>
                             @endif
                             @if ($activeSubmission->tipe === \App\Models\Submission::TIPE_LAIN_LAIN)
                                 <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Penerima</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->penerimaLabel() ?? 'Belum ditentukan' }}</dd></div>
@@ -424,10 +424,23 @@
 
                             <div>
                                 <label class="block text-sm font-medium text-zinc-700">Pembagian Prioritas (Rp)</label>
-                                <input type="number" min="0" step="1000" wire:model.blur="form.pembagian_prioritas" placeholder="0" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                <input type="number" min="0" step="1000" wire:model.live="form.pembagian_prioritas" placeholder="0" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                 <p class="mt-1 text-xs text-zinc-500">Nominal ini dipotong terlebih dahulu sebelum pembagian persentase (23% / 38,5% / 38,5%).</p>
                                 @error('form.pembagian_prioritas') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
                             </div>
+
+                            @if ((int) $form->pembagian_prioritas > 0)
+                                <div>
+                                    <label class="block text-sm font-medium text-zinc-700">Penerima Prioritas</label>
+                                    <select wire:model.blur="form.penerima_prioritas" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                        @foreach (\App\Models\Submission::PENERIMA_PRIORITAS_LABELS as $value => $label)
+                                            <option value="{{ $value }}">{{ $label }}</option>
+                                        @endforeach
+                                    </select>
+                                    <p class="mt-1 text-xs text-zinc-500">Pilih penerima nominal prioritas (masuk 100% tanpa dipotong persentase).</p>
+                                    @error('form.penerima_prioritas') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                                </div>
+                            @endif
 
                             @if ($form->tipe === \App\Models\Submission::TIPE_LAIN_LAIN)
                                 <div>
@@ -549,6 +562,25 @@
                             <input type="number" min="0" step="1000" wire:model.live="completeJumlahBayar" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                             @error('completeJumlahBayar') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
                         </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-700">Pembagian Prioritas (Rp)</label>
+                            <input type="number" min="0" step="1000" wire:model.live="completePembagianPrioritas" placeholder="0" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <p class="mt-1 text-xs text-zinc-500">Nominal prioritas dipotong sebelum bagi hasil persentase.</p>
+                            @error('completePembagianPrioritas') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        @if ((int) $completePembagianPrioritas > 0)
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-700">Penerima Prioritas</label>
+                                <select wire:model.blur="completePenerimaPrioritas" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    @foreach (\App\Models\Submission::PENERIMA_PRIORITAS_LABELS as $value => $label)
+                                        <option value="{{ $value }}">{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                                @error('completePenerimaPrioritas') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                        @endif
 
                         <div class="flex justify-between text-sm">
                             <span class="text-zinc-500">Kembalian</span>

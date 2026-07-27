@@ -84,6 +84,22 @@ class Submission extends Model
         self::PENERIMA_ALDO => 'Aldo',
     ];
 
+    public const PENERIMA_PRIORITAS_LAINNYA = 'lainnya';
+
+    public const PENERIMA_PRIORITAS_LIST = [
+        self::PENERIMA_TOKO,
+        self::PENERIMA_KRISNA,
+        self::PENERIMA_ALDO,
+        self::PENERIMA_PRIORITAS_LAINNYA,
+    ];
+
+    public const PENERIMA_PRIORITAS_LABELS = [
+        self::PENERIMA_TOKO => 'Toko',
+        self::PENERIMA_KRISNA => 'Krisna',
+        self::PENERIMA_ALDO => 'Aldo',
+        self::PENERIMA_PRIORITAS_LAINNYA => 'Lainnya',
+    ];
+
     protected $fillable = [
         'nama',
         'asal_kampus',
@@ -94,6 +110,7 @@ class Submission extends Model
         'deadline',
         'biaya_jasa',
         'pembagian_prioritas',
+        'penerima_prioritas',
         'status',
         'urutan',
         'metode_pembayaran',
@@ -158,6 +175,13 @@ class Submission extends Model
     {
         return $this->penerima !== null
             ? (self::PENERIMA_LABELS[$this->penerima] ?? $this->penerima)
+            : null;
+    }
+
+    public function penerimaPrioritasLabel(): ?string
+    {
+        return $this->penerima_prioritas !== null
+            ? (self::PENERIMA_PRIORITAS_LABELS[$this->penerima_prioritas] ?? $this->penerima_prioritas)
             : null;
     }
 
