@@ -405,4 +405,84 @@ class DashboardTest extends TestCase
             ->assertViewHas('totalOther', 0)
             ->assertViewHas('totalPendapatan', 700000);
     }
+
+    public function test_dashboard_defaults_to_current_month_and_year_session(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $currentMonth = (string) date('n');
+        $currentYear = (string) date('Y');
+
+        $this->actingAs($admin);
+
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->assertSet('bulan', $currentMonth)
+            ->assertSet('tahun', $currentYear);
+    }
+
+    public function test_switching_month_session_resets_monthly_stats_and_bagi_hasil(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        // Create submission in July 2026
+        Submission::factory()->create([
+            'nama' => 'Juli Submission',
+            'status' => Submission::STATUS_SELESAI,
+            'biaya_jasa' => 500000,
+            'tanggal_pengajuan' => '2026-07-15',
+        ]);
+
+        $this->actingAs($admin);
+
+        // Viewing August 2026 should show 0 for July submission (resets to 0 for August)
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->set('tahun', '2026')
+            ->set('bulan', '8')
+            ->assertDontSee('Juli Submission')
+            ->assertViewHas('totalPendapatan', 0)
+            ->assertViewHas('summary', function ($summary) {
+                return $summary['total'] === 0 && $summary['selesai'] === 0;
+            });
+
+        // Switching to July 2026 (Bulan 7) should display July's data
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->set('tahun', '2026')
+            ->set('bulan', '7')
+            ->assertSee('Juli Submission')
+            ->assertViewHas('totalPendapatan', 500000)
+            ->assertViewHas('summary', function ($summary) {
+                return $summary['total'] === 1 && $summary['selesai'] === 1;
+            });
+    }
+
+    public function test_all_months_total_view_aggregates_all_data(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        Submission::factory()->create([
+            'nama' => 'Submission July',
+            'status' => Submission::STATUS_SELESAI,
+            'biaya_jasa' => 200000,
+            'tanggal_pengajuan' => '2026-07-10',
+        ]);
+
+        Submission::factory()->create([
+            'nama' => 'Submission August',
+            'status' => Submission::STATUS_SELESAI,
+            'biaya_jasa' => 300000,
+            'tanggal_pengajuan' => '2026-08-10',
+        ]);
+
+        $this->actingAs($admin);
+
+        // Setting bulan to 'all' should show total across both July and August
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->set('tahun', '2026')
+            ->call('setBulan', 'all')
+            ->assertSee('Submission July')
+            ->assertSee('Submission August')
+            ->assertViewHas('totalPendapatan', 500000)
+            ->assertViewHas('summary', function ($summary) {
+                return $summary['total'] === 2 && $summary['selesai'] === 2;
+            });
+    }
 }

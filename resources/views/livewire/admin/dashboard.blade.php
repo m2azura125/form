@@ -36,6 +36,56 @@
     </div>
 
     @unless ($trash)
+        {{-- Session Filter Bar (Bulan & Tahun) --}}
+        <div class="bg-white border border-zinc-200 rounded-lg p-4 mb-6 shadow-sm">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Sesi Filter:</span>
+                    <span class="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 border border-indigo-200">
+                        @if ($bulan !== 'all' && isset($monthsList[(int)$bulan]))
+                            {{ $monthsList[(int)$bulan] }}
+                        @else
+                            Semua Bulan (Total)
+                        @endif
+                        {{ $tahun !== 'all' ? $tahun : 'Semua Tahun' }}
+                    </span>
+                </div>
+
+                {{-- Selector Tahun --}}
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-medium text-zinc-500 whitespace-nowrap">Tahun:</label>
+                    <select wire:model.live="tahun" class="rounded-md border-zinc-300 py-1 px-2.5 text-xs font-medium text-zinc-700 focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="all">Semua Tahun</option>
+                        @foreach ($availableYears as $y)
+                            <option value="{{ $y }}">{{ $y }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            {{-- Tombol Bulan (Januari - Desember + Total) --}}
+            <div class="mt-3">
+                <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    <button
+                        type="button"
+                        wire:click="setBulan('all')"
+                        class="px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors {{ $bulan === 'all' ? 'bg-indigo-600 text-white shadow-sm font-semibold' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200' }}"
+                    >
+                        Total / Semua Bulan
+                    </button>
+                    @foreach ($monthsList as $num => $name)
+                        <button
+                            type="button"
+                            wire:click="setBulan('{{ $num }}')"
+                            class="px-3 py-1.5 text-xs font-medium rounded-md whitespace-nowrap transition-colors {{ (string)$bulan === (string)$num ? 'bg-indigo-600 text-white shadow-sm font-semibold' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200' }}"
+                        >
+                            {{ $name }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+
         {{-- Bagi hasil (admin only) --}}
         <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
             <div class="flex items-center justify-between mb-3">

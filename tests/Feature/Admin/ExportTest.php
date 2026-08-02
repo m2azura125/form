@@ -43,4 +43,23 @@ class ExportTest extends TestCase
         $this->assertSame("'=cmd|'/c calc'!A1", $rows[1]);
         $this->assertSame("'+SUM(1+1)", $rows[3]);
     }
+
+    public function test_export_filters_by_month_and_year(): void
+    {
+        Submission::factory()->create([
+            'nama' => 'July Entry',
+            'tanggal_pengajuan' => '2026-07-10',
+        ]);
+
+        Submission::factory()->create([
+            'nama' => 'August Entry',
+            'tanggal_pengajuan' => '2026-08-10',
+        ]);
+
+        $exportJuly = new SubmissionsExport(['bulan' => '7', 'tahun' => '2026']);
+        $queryJuly = $exportJuly->query()->get();
+
+        $this->assertCount(1, $queryJuly);
+        $this->assertSame('July Entry', $queryJuly->first()->nama);
+    }
 }

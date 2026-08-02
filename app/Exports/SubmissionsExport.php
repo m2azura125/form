@@ -51,6 +51,14 @@ class SubmissionsExport implements FromQuery, WithHeadings, WithMapping, WithSty
             $query->whereDate('deadline', '<=', $this->filters['dl_sampai']);
         }
 
+        if (filled($this->filters['bulan'] ?? null) && $this->filters['bulan'] !== 'all') {
+            $query->whereMonth('tanggal_pengajuan', $this->filters['bulan']);
+        }
+
+        if (filled($this->filters['tahun'] ?? null) && $this->filters['tahun'] !== 'all') {
+            $query->whereYear('tanggal_pengajuan', $this->filters['tahun']);
+        }
+
         return $query->orderBy('tanggal_pengajuan', 'desc');
     }
 

@@ -41,7 +41,7 @@ class SubmissionFactory extends Factory
      */
     public function definition(): array
     {
-        $tanggalPengajuan = $this->faker->dateTimeBetween('-2 months', 'now');
+        $tanggalPengajuan = now();
         $deadline = $this->faker->dateTimeBetween($tanggalPengajuan, '+2 months');
         $status = $this->faker->randomElement(Submission::STATUSES);
 

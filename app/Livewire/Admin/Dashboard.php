@@ -52,6 +52,12 @@ class Dashboard extends Component
     #[Url(as: 'dl_sampai', history: true)]
     public string $deadlineSampai = '';
 
+    #[Url(as: 'bulan', history: true)]
+    public string $bulan = '';
+
+    #[Url(as: 'tahun', history: true)]
+    public string $tahun = '';
+
     #[Url(as: 'sort', history: true)]
     public string $sortField = 'tanggal_pengajuan';
 
@@ -63,6 +69,17 @@ class Dashboard extends Component
 
     #[Url(as: 'trash', history: true)]
     public bool $trash = false;
+
+    public function mount(): void
+    {
+        if ($this->bulan === '') {
+            $this->bulan = (string) date('n');
+        }
+
+        if ($this->tahun === '') {
+            $this->tahun = (string) date('Y');
+        }
+    }
 
     public SubmissionForm $form;
 
@@ -121,12 +138,26 @@ class Dashboard extends Component
         $this->resetPage();
     }
 
+    public function setBulan(string $bulan): void
+    {
+        $this->bulan = $bulan;
+        $this->resetPage();
+    }
+
+    public function setTahun(string $tahun): void
+    {
+        $this->tahun = $tahun;
+        $this->resetPage();
+    }
+
     public function resetFilters(): void
     {
         $this->reset([
             'search', 'status', 'tipe',
             'tanggalDari', 'tanggalSampai', 'deadlineDari', 'deadlineSampai',
         ]);
+        $this->bulan = (string) date('n');
+        $this->tahun = (string) date('Y');
         $this->resetPage();
     }
 
@@ -416,6 +447,14 @@ class Dashboard extends Component
             $query->onlyTrashed();
         }
 
+        if ($this->tahun !== '' && $this->tahun !== 'all') {
+            $query->whereYear('tanggal_pengajuan', $this->tahun);
+        }
+
+        if ($this->bulan !== '' && $this->bulan !== 'all') {
+            $query->whereMonth('tanggal_pengajuan', $this->bulan);
+        }
+
         if ($this->search !== '') {
             $query->where(function (Builder $q) {
                 $q->where('nama', 'like', "%{$this->search}%")
@@ -463,22 +502,38 @@ class Dashboard extends Component
             'tgl_sampai' => $this->tanggalSampai,
             'dl_dari' => $this->deadlineDari,
             'dl_sampai' => $this->deadlineSampai,
+            'bulan' => $this->bulan,
+            'tahun' => $this->tahun,
         ];
     }
 
     public function render()
     {
+        $summaryQuery = Submission::query();
+        if ($this->tahun !== '' && $this->tahun !== 'all') {
+            $summaryQuery->whereYear('tanggal_pengajuan', $this->tahun);
+        }
+        if ($this->bulan !== '' && $this->bulan !== 'all') {
+            $summaryQuery->whereMonth('tanggal_pengajuan', $this->bulan);
+        }
+
         $summary = [
-            'total' => Submission::query()->count(),
-            'baru' => Submission::query()->where('status', Submission::STATUS_BARU)->count(),
-            'diproses' => Submission::query()->where('status', Submission::STATUS_DIPROSES)->count(),
-            'selesai' => Submission::query()->where('status', Submission::STATUS_SELESAI)->count(),
-            'ditolak' => Submission::query()->where('status', Submission::STATUS_DITOLAK)->count(),
+            'total' => (clone $summaryQuery)->count(),
+            'baru' => (clone $summaryQuery)->where('status', Submission::STATUS_BARU)->count(),
+            'diproses' => (clone $summaryQuery)->where('status', Submission::STATUS_DIPROSES)->count(),
+            'selesai' => (clone $summaryQuery)->where('status', Submission::STATUS_SELESAI)->count(),
+            'ditolak' => (clone $summaryQuery)->where('status', Submission::STATUS_DITOLAK)->count(),
         ];
 
-        $completedSubmissions = Submission::query()
-            ->where('status', Submission::STATUS_SELESAI)
-            ->get(['tipe', 'penerima', 'biaya_jasa', 'pembagian_prioritas', 'penerima_prioritas']);
+        $completedQuery = Submission::query()->where('status', Submission::STATUS_SELESAI);
+        if ($this->tahun !== '' && $this->tahun !== 'all') {
+            $completedQuery->whereYear('tanggal_pengajuan', $this->tahun);
+        }
+        if ($this->bulan !== '' && $this->bulan !== 'all') {
+            $completedQuery->whereMonth('tanggal_pengajuan', $this->bulan);
+        }
+
+        $completedSubmissions = $completedQuery->get(['tipe', 'penerima', 'biaya_jasa', 'pembagian_prioritas', 'penerima_prioritas']);
 
         $totalProjectNet = 0;
         $lainLainByPenerima = [
@@ -534,12 +589,26 @@ class Dashboard extends Component
             ];
         })->all();
 
+        $monthsList = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+
+        $currentYear = (int) date('Y');
+        $minYearInDb = (int) (Submission::query()->oldest('tanggal_pengajuan')->value('tanggal_pengajuan')?->format('Y') ?? $currentYear);
+        $startYear = min($minYearInDb, 2024);
+        $availableYears = range($startYear, max($currentYear, 2026));
+        rsort($availableYears);
+
         return view('livewire.admin.dashboard', [
             'submissions' => $this->filteredQuery()->paginate($this->perPage),
             'summary' => $summary,
             'totalPendapatan' => $totalPendapatan,
             'totalOther' => $totalOther,
             'bagiHasil' => $bagiHasil,
+            'monthsList' => $monthsList,
+            'availableYears' => $availableYears,
             'activeSubmission' => $this->activeId ? Submission::query()->withTrashed()->find($this->activeId) : null,
             'completingSubmission' => $this->completingId ? Submission::query()->find($this->completingId) : null,
             'acceptingSubmission' => $this->acceptingId ? Submission::query()->find($this->acceptingId) : null,
