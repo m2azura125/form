@@ -206,7 +206,15 @@ class Dashboard extends Component
         $this->form->validate();
 
         $submission = Submission::query()->findOrFail($this->activeId);
-        $submission->update($this->form->payload());
+        $payload = $this->form->payload();
+
+        if (($payload['status'] ?? null) === Submission::STATUS_SELESAI) {
+            $payload['tanggal_selesai'] = $submission->tanggal_selesai ?? now();
+        } elseif (isset($payload['status']) && $payload['status'] !== Submission::STATUS_SELESAI) {
+            $payload['tanggal_selesai'] = null;
+        }
+
+        $submission->update($payload);
 
         $this->closeModal();
         session()->flash('success', 'Pengajuan berhasil diperbarui.');
@@ -426,6 +434,7 @@ class Dashboard extends Component
 
         $submission->update([
             'status' => Submission::STATUS_SELESAI,
+            'tanggal_selesai' => $submission->tanggal_selesai ?? now(),
             'metode_pembayaran' => $this->completeMetodePembayaran,
             'jumlah_bayar' => (int) $this->completeJumlahBayar,
             'penerima' => $submission->tipe === Submission::TIPE_LAIN_LAIN ? $this->completePenerima : null,
@@ -448,11 +457,23 @@ class Dashboard extends Component
         }
 
         if ($this->tahun !== '' && $this->tahun !== 'all') {
-            $query->whereYear('tanggal_pengajuan', $this->tahun);
+            $query->where(function (Builder $q) {
+                $q->whereYear('tanggal_pengajuan', $this->tahun)
+                    ->orWhere(function (Builder $sub) {
+                        $sub->where('status', Submission::STATUS_SELESAI)
+                            ->whereYear('tanggal_selesai', $this->tahun);
+                    });
+            });
         }
 
         if ($this->bulan !== '' && $this->bulan !== 'all') {
-            $query->whereMonth('tanggal_pengajuan', $this->bulan);
+            $query->where(function (Builder $q) {
+                $q->whereMonth('tanggal_pengajuan', $this->bulan)
+                    ->orWhere(function (Builder $sub) {
+                        $sub->where('status', Submission::STATUS_SELESAI)
+                            ->whereMonth('tanggal_selesai', $this->bulan);
+                    });
+            });
         }
 
         if ($this->search !== '') {
@@ -511,10 +532,22 @@ class Dashboard extends Component
     {
         $summaryQuery = Submission::query();
         if ($this->tahun !== '' && $this->tahun !== 'all') {
-            $summaryQuery->whereYear('tanggal_pengajuan', $this->tahun);
+            $summaryQuery->where(function (Builder $q) {
+                $q->whereYear('tanggal_pengajuan', $this->tahun)
+                    ->orWhere(function (Builder $sub) {
+                        $sub->where('status', Submission::STATUS_SELESAI)
+                            ->whereYear('tanggal_selesai', $this->tahun);
+                    });
+            });
         }
         if ($this->bulan !== '' && $this->bulan !== 'all') {
-            $summaryQuery->whereMonth('tanggal_pengajuan', $this->bulan);
+            $summaryQuery->where(function (Builder $q) {
+                $q->whereMonth('tanggal_pengajuan', $this->bulan)
+                    ->orWhere(function (Builder $sub) {
+                        $sub->where('status', Submission::STATUS_SELESAI)
+                            ->whereMonth('tanggal_selesai', $this->bulan);
+                    });
+            });
         }
 
         $summary = [
@@ -527,10 +560,20 @@ class Dashboard extends Component
 
         $completedQuery = Submission::query()->where('status', Submission::STATUS_SELESAI);
         if ($this->tahun !== '' && $this->tahun !== 'all') {
-            $completedQuery->whereYear('tanggal_pengajuan', $this->tahun);
+            $completedQuery->where(function (Builder $q) {
+                $q->whereYear('tanggal_selesai', $this->tahun)
+                    ->orWhere(function (Builder $sub) {
+                        $sub->whereNull('tanggal_selesai')->whereYear('tanggal_pengajuan', $this->tahun);
+                    });
+            });
         }
         if ($this->bulan !== '' && $this->bulan !== 'all') {
-            $completedQuery->whereMonth('tanggal_pengajuan', $this->bulan);
+            $completedQuery->where(function (Builder $q) {
+                $q->whereMonth('tanggal_selesai', $this->bulan)
+                    ->orWhere(function (Builder $sub) {
+                        $sub->whereNull('tanggal_selesai')->whereMonth('tanggal_pengajuan', $this->bulan);
+                    });
+            });
         }
 
         $completedSubmissions = $completedQuery->get(['tipe', 'penerima', 'biaya_jasa', 'pembagian_prioritas', 'penerima_prioritas']);

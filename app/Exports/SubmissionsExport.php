@@ -52,11 +52,25 @@ class SubmissionsExport implements FromQuery, WithHeadings, WithMapping, WithSty
         }
 
         if (filled($this->filters['bulan'] ?? null) && $this->filters['bulan'] !== 'all') {
-            $query->whereMonth('tanggal_pengajuan', $this->filters['bulan']);
+            $month = $this->filters['bulan'];
+            $query->where(function (Builder $q) use ($month) {
+                $q->whereMonth('tanggal_pengajuan', $month)
+                    ->orWhere(function (Builder $sub) use ($month) {
+                        $sub->where('status', Submission::STATUS_SELESAI)
+                            ->whereMonth('tanggal_selesai', $month);
+                    });
+            });
         }
 
         if (filled($this->filters['tahun'] ?? null) && $this->filters['tahun'] !== 'all') {
-            $query->whereYear('tanggal_pengajuan', $this->filters['tahun']);
+            $year = $this->filters['tahun'];
+            $query->where(function (Builder $q) use ($year) {
+                $q->whereYear('tanggal_pengajuan', $year)
+                    ->orWhere(function (Builder $sub) use ($year) {
+                        $sub->where('status', Submission::STATUS_SELESAI)
+                            ->whereYear('tanggal_selesai', $year);
+                    });
+            });
         }
 
         return $query->orderBy('tanggal_pengajuan', 'desc');

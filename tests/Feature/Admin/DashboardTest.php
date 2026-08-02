@@ -485,4 +485,40 @@ class DashboardTest extends TestCase
                 return $summary['total'] === 2 && $summary['selesai'] === 2;
             });
     }
+
+    public function test_submission_submitted_in_july_and_paid_in_august_counts_in_august_bagi_hasil_recap(): void
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        // Submitted July 30, completed/paid in August
+        $submission = Submission::factory()->create([
+            'nama' => 'Late Payment Item',
+            'status' => Submission::STATUS_DIPROSES,
+            'biaya_jasa' => 1000000,
+            'tanggal_pengajuan' => '2026-07-30',
+            'deadline' => '2026-08-02',
+        ]);
+
+        $this->actingAs($admin);
+
+        // Mark completed (paid) in August
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->call('openComplete', $submission->id)
+            ->set('completeJumlahBayar', '1000000')
+            ->call('completeSubmission')
+            ->assertHasNoErrors();
+
+        // In July 2026 view: Bagi Hasil / total revenue is 0 for July recap
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->set('tahun', '2026')
+            ->set('bulan', '7')
+            ->assertViewHas('totalPendapatan', 0);
+
+        // In August 2026 view: Bagi Hasil / total revenue is 1,000,000 for August recap
+        Livewire::test(\App\Livewire\Admin\Dashboard::class)
+            ->set('tahun', '2026')
+            ->set('bulan', '8')
+            ->assertSee('Late Payment Item')
+            ->assertViewHas('totalPendapatan', 1000000);
+    }
 }

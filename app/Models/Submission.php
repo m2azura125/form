@@ -112,6 +112,7 @@ class Submission extends Model
         'pembagian_prioritas',
         'penerima_prioritas',
         'status',
+        'tanggal_selesai',
         'urutan',
         'metode_pembayaran',
         'jumlah_bayar',
@@ -123,6 +124,7 @@ class Submission extends Model
         return [
             'tanggal_pengajuan' => 'date',
             'deadline' => 'date',
+            'tanggal_selesai' => 'datetime',
             'biaya_jasa' => 'integer',
             'pembagian_prioritas' => 'integer',
             'urutan' => 'integer',
