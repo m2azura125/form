@@ -30,9 +30,19 @@ class LoginForm extends Form
     {
         $this->ensureIsNotRateLimited();
 
-        $field = filter_var($this->login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
+        $loginInput = trim($this->login);
+        $isEmail = filter_var($loginInput, FILTER_VALIDATE_EMAIL) !== false;
 
-        if (! Auth::attempt([$field => $this->login, 'password' => $this->password], $this->remember)) {
+        if ($isEmail) {
+            $authenticated = Auth::attempt(['email' => $loginInput, 'password' => $this->password], $this->remember);
+        } else {
+            $authenticated = Auth::attempt(['username' => $loginInput, 'password' => $this->password], $this->remember);
+            if (! $authenticated) {
+                $authenticated = Auth::attempt(['email' => $loginInput, 'password' => $this->password], $this->remember);
+            }
+        }
+
+        if (! $authenticated) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
