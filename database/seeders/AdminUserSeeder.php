@@ -22,5 +22,16 @@ class AdminUserSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+
+        User::query()->updateOrCreate(
+            ['email' => 'krisna@app.test'],
+            [
+                'name' => 'Krisna',
+                'username' => 'krisna',
+                'password' => 'susjol123',
+                'role' => 'admin',
+                'email_verified_at' => now(),
+            ]
+        );
     }
 }

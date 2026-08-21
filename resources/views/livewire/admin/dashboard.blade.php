@@ -401,6 +401,26 @@
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Dibuat</dt><dd class="col-span-2 text-zinc-900 tabular-nums">{{ $activeSubmission->created_at->format('d-m-Y H:i') }}</dd></div>
                         </dl>
 
+                        @if($activeSubmission->histories->count() > 0)
+                            <div class="mt-5 border-t border-zinc-200 pt-4">
+                                <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">Riwayat Perubahan</h3>
+                                <div class="space-y-3 max-h-48 overflow-y-auto pr-1">
+                                    @foreach($activeSubmission->histories as $history)
+                                        <div class="flex items-start gap-2.5 text-xs">
+                                            <div class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></div>
+                                            <div class="flex-1">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="font-semibold text-zinc-900">{{ $history->user_name ?? 'Sistem' }}</span>
+                                                    <span class="text-[11px] text-zinc-400 tabular-nums">{{ $history->created_at->format('d M H:i') }}</span>
+                                                </div>
+                                                <p class="text-zinc-600 mt-0.5">{{ $history->keterangan }}</p>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
+
                         <div class="mt-6 flex justify-end gap-2">
                             <button wire:click="closeModal" class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Tutup</button>
                             <button wire:click="switchToEdit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">Edit</button>

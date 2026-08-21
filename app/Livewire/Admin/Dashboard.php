@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Livewire\Forms\SubmissionForm;
 use App\Models\Submission;
+use App\Models\SubmissionHistory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
@@ -206,6 +207,7 @@ class Dashboard extends Component
         $this->form->validate();
 
         $submission = Submission::query()->findOrFail($this->activeId);
+        $oldBiayaJasa = $submission->biaya_jasa;
         $payload = $this->form->payload();
 
         if (($payload['status'] ?? null) === Submission::STATUS_SELESAI) {
@@ -215,6 +217,17 @@ class Dashboard extends Component
         }
 
         $submission->update($payload);
+
+        $newBiayaJasa = $submission->biaya_jasa;
+        if ($oldBiayaJasa !== $newBiayaJasa) {
+            if ($oldBiayaJasa === null && $newBiayaJasa !== null) {
+                SubmissionHistory::record($submission, SubmissionHistory::AKSI_TULIS_HARGA, 'Menulis biaya jasa: Rp '.number_format($newBiayaJasa, 0, ',', '.'));
+            } else {
+                SubmissionHistory::record($submission, SubmissionHistory::AKSI_GANTI_HARGA, 'Mengganti biaya jasa dari '.($oldBiayaJasa !== null ? 'Rp '.number_format($oldBiayaJasa, 0, ',', '.') : 'tidak ada').' menjadi Rp '.number_format($newBiayaJasa, 0, ',', '.'));
+            }
+        } else {
+            SubmissionHistory::record($submission, SubmissionHistory::AKSI_EDIT, 'Memperbarui data pengajuan');
+        }
 
         $this->closeModal();
         session()->flash('success', 'Pengajuan berhasil diperbarui.');
@@ -227,7 +240,13 @@ class Dashboard extends Component
 
     public function deleteSubmission(): void
     {
-        Submission::query()->find($this->confirmingDeleteId)?->delete();
+        $submission = Submission::query()->find($this->confirmingDeleteId);
+
+        if ($submission) {
+            SubmissionHistory::record($submission, SubmissionHistory::AKSI_HAPUS, 'Memindahkan pengajuan ke sampah');
+            $submission->delete();
+        }
+
         $this->confirmingDeleteId = null;
         session()->flash('success', 'Pengajuan dipindahkan ke sampah.');
     }
@@ -236,7 +255,13 @@ class Dashboard extends Component
     {
         abort_unless(Auth::user()->isSuperAdmin(), 403);
 
-        Submission::onlyTrashed()->find($id)?->restore();
+        $submission = Submission::onlyTrashed()->find($id);
+
+        if ($submission) {
+            $submission->restore();
+            SubmissionHistory::record($submission, SubmissionHistory::AKSI_PULIHKAN, 'Memulihkan pengajuan dari sampah');
+        }
+
         session()->flash('success', 'Pengajuan berhasil dipulihkan.');
     }
 
@@ -292,12 +317,17 @@ class Dashboard extends Component
 
         $this->validate($rules, $messages);
 
+        $biayaJasa = (int) $this->acceptBiayaJasa;
+
         $submission->update([
             'status' => Submission::STATUS_DIPROSES,
-            'biaya_jasa' => (int) $this->acceptBiayaJasa,
+            'biaya_jasa' => $biayaJasa,
             'deadline' => $this->acceptDeadline,
             'penerima' => $submission->tipe === Submission::TIPE_LAIN_LAIN ? $this->acceptPenerima : null,
         ]);
+
+        SubmissionHistory::record($submission, SubmissionHistory::AKSI_TERIMA, 'Menerima pengajuan dan menetapkan biaya jasa: Rp '.number_format($biayaJasa, 0, ',', '.'));
+        SubmissionHistory::record($submission, SubmissionHistory::AKSI_TULIS_HARGA, 'Menulis biaya jasa: Rp '.number_format($biayaJasa, 0, ',', '.'));
 
         $this->closeAccept();
         session()->flash('success', 'Pengajuan diterima dan sedang diproses.');
@@ -346,6 +376,8 @@ class Dashboard extends Component
         }
 
         $submission->update(['status' => Submission::STATUS_DITOLAK]);
+        SubmissionHistory::record($submission, SubmissionHistory::AKSI_TOLAK, 'Menolak pengajuan');
+
         session()->flash('success', 'Pengajuan ditolak.');
     }
 
@@ -443,6 +475,9 @@ class Dashboard extends Component
                 ? ($this->completePenerimaPrioritas !== '' ? $this->completePenerimaPrioritas : Submission::PENERIMA_PRIORITAS_LAINNYA)
                 : null,
         ]);
+
+        $metodeLabel = Submission::METODE_PEMBAYARAN_LABELS[$this->completeMetodePembayaran] ?? $this->completeMetodePembayaran;
+        SubmissionHistory::record($submission, SubmissionHistory::AKSI_SELESAI, 'Menandai pengajuan selesai. Metode bayar: '.$metodeLabel.' (Rp '.number_format((int) $this->completeJumlahBayar, 0, ',', '.').')');
 
         $this->closeComplete();
         session()->flash('success', 'Pengajuan ditandai selesai.');

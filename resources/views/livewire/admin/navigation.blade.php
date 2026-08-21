@@ -14,6 +14,13 @@
                     >
                         Dashboard
                     </a>
+                    <a
+                        href="{{ route('admin.history') }}"
+                        wire:navigate
+                        class="px-3 py-1.5 rounded-md text-sm font-medium {{ request()->routeIs('admin.history') ? 'text-indigo-600 bg-indigo-50' : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50' }}"
+                    >
+                        History Perubahan
+                    </a>
                 </div>
             </div>
 
@@ -37,6 +44,7 @@
 
         <div x-show="open" x-cloak class="sm:hidden pb-3 space-y-1">
             <a href="{{ route('admin.dashboard') }}" wire:navigate class="block px-3 py-2 rounded-md text-sm font-medium text-zinc-700 hover:bg-zinc-50">Dashboard</a>
+            <a href="{{ route('admin.history') }}" wire:navigate class="block px-3 py-2 rounded-md text-sm font-medium text-zinc-700 hover:bg-zinc-50">History Perubahan</a>
             <a href="{{ route('profile') }}" wire:navigate class="block px-3 py-2 rounded-md text-sm font-medium text-zinc-700 hover:bg-zinc-50">Profil Saya</a>
             <button wire:click="logout" class="block w-full text-left px-3 py-2 rounded-md text-sm font-medium text-zinc-700 hover:bg-zinc-50">Keluar</button>
         </div>

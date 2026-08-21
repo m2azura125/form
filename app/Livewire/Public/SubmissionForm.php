@@ -50,7 +50,13 @@ class SubmissionForm extends Component
 
         $this->form->validate();
 
-        Submission::query()->create($this->form->payload());
+        $submission = Submission::query()->create($this->form->payload());
+
+        \App\Models\SubmissionHistory::record(
+            $submission,
+            \App\Models\SubmissionHistory::AKSI_BUAT,
+            "Pengajuan baru dibuat oleh {$submission->nama} ({$submission->tipeLabel()})"
+        );
 
         $this->form->reset();
         $this->form->tanggal_pengajuan = now()->format('Y-m-d');

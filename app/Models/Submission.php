@@ -5,6 +5,7 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Submission extends Model
@@ -204,5 +205,10 @@ class Submission extends Model
         }
 
         return Carbon::today()->diffInDays($this->deadline, false) <= 3;
+    }
+
+    public function histories(): HasMany
+    {
+        return $this->hasMany(SubmissionHistory::class)->latest();
     }
 }
