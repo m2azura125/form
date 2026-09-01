@@ -617,6 +617,27 @@
                     </div>
 
                     <form wire:submit="completeSubmission" class="mt-4 space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-700">Bulan Bayar</label>
+                                <select wire:model.blur="completeBulan" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    @foreach ($monthsList as $num => $name)
+                                        <option value="{{ $num }}">{{ $name }}</option>
+                                    @endforeach
+                                </select>
+                                @error('completeBulan') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-700">Tahun Bayar</label>
+                                <select wire:model.blur="completeTahun" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                    @foreach ($availableYears as $y)
+                                        <option value="{{ $y }}">{{ $y }}</option>
+                                    @endforeach
+                                </select>
+                                @error('completeTahun') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                            </div>
+                        </div>
+
                         <div>
                             <label class="block text-sm font-medium text-zinc-700">Dibayar Lewat</label>
                             <select wire:model.live="completeMetodePembayaran" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">

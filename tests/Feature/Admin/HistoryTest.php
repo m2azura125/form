@@ -44,6 +44,7 @@ class HistoryTest extends TestCase
 
         $submission = Submission::factory()->create([
             'status' => Submission::STATUS_BARU,
+            'tipe' => Submission::TIPE_PROJECT,
             'tanggal_pengajuan' => now()->format('Y-m-d'),
         ]);
 

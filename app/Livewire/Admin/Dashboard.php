@@ -29,7 +29,7 @@ class Dashboard extends Component
         'activeId', 'modalMode', 'confirmingDeleteId',
         'acceptingId', 'acceptBiayaJasa', 'acceptDeadline', 'acceptPenerima',
         'reordering', 'reorderItems',
-        'completingId', 'completeMetodePembayaran', 'completeJumlahBayar', 'completePenerima', 'completePembagianPrioritas', 'completePenerimaPrioritas',
+        'completingId', 'completeMetodePembayaran', 'completeJumlahBayar', 'completePenerima', 'completePembagianPrioritas', 'completePenerimaPrioritas', 'completeBulan', 'completeTahun',
     ];
 
     #[Url(as: 'q', history: true)]
@@ -113,6 +113,10 @@ class Dashboard extends Component
     public string $completePembagianPrioritas = '';
 
     public string $completePenerimaPrioritas = 'lainnya';
+
+    public string $completeBulan = '';
+
+    public string $completeTahun = '';
 
     public function updated(string $name): void
     {
@@ -389,7 +393,13 @@ class Dashboard extends Component
             return;
         }
 
+        $targetDate = $submission->tanggal_selesai ?? now();
+        $defaultMonth = ($this->bulan !== '' && $this->bulan !== 'all') ? $this->bulan : (string) $targetDate->format('n');
+        $defaultYear = ($this->tahun !== '' && $this->tahun !== 'all') ? $this->tahun : (string) $targetDate->format('Y');
+
         $this->completingId = $id;
+        $this->completeBulan = $submission->tanggal_selesai ? (string) $submission->tanggal_selesai->format('n') : $defaultMonth;
+        $this->completeTahun = $submission->tanggal_selesai ? (string) $submission->tanggal_selesai->format('Y') : $defaultYear;
         $this->completeMetodePembayaran = Submission::METODE_TUNAI;
         $this->completeJumlahBayar = (string) ($submission->biaya_jasa ?? 0);
         $this->completePenerima = $submission->penerima ?? '';
@@ -401,6 +411,8 @@ class Dashboard extends Component
     public function closeComplete(): void
     {
         $this->completingId = null;
+        $this->completeBulan = '';
+        $this->completeTahun = '';
         $this->completeMetodePembayaran = Submission::METODE_TUNAI;
         $this->completeJumlahBayar = '';
         $this->completePenerima = '';
@@ -420,6 +432,8 @@ class Dashboard extends Component
         }
 
         $rules = [
+            'completeBulan' => ['required', 'integer', 'between:1,12'],
+            'completeTahun' => ['required', 'integer', 'between:2000,2099'],
             'completeMetodePembayaran' => ['required', 'in:'.implode(',', Submission::METODE_PEMBAYARANS)],
             'completeJumlahBayar' => ['required', 'integer', 'min:0'],
             'completePembagianPrioritas' => ['nullable', 'integer', 'min:0'],
@@ -436,6 +450,12 @@ class Dashboard extends Component
         }
 
         $messages = [
+            'completeBulan.required' => 'Bulan pembayaran wajib dipilih.',
+            'completeBulan.integer' => 'Bulan pembayaran tidak valid.',
+            'completeBulan.between' => 'Bulan pembayaran tidak valid.',
+            'completeTahun.required' => 'Tahun pembayaran wajib diisi.',
+            'completeTahun.integer' => 'Tahun pembayaran harus berupa angka.',
+            'completeTahun.between' => 'Tahun pembayaran tidak valid.',
             'completeMetodePembayaran.required' => 'Metode pembayaran wajib dipilih.',
             'completeMetodePembayaran.in' => 'Metode pembayaran tidak valid.',
             'completeJumlahBayar.required' => 'Jumlah bayar wajib diisi.',
@@ -462,11 +482,26 @@ class Dashboard extends Component
             return;
         }
 
+        $bulanInt = (int) $this->completeBulan;
+        $tahunInt = (int) $this->completeTahun;
+        $existingDate = $submission->tanggal_selesai ?? now();
+        $maxDays = \Carbon\Carbon::createFromDate($tahunInt, $bulanInt, 1)->daysInMonth;
+        $day = min($existingDate->day, $maxDays);
+
+        $tanggalSelesai = \Carbon\Carbon::create(
+            $tahunInt,
+            $bulanInt,
+            $day,
+            $existingDate->hour,
+            $existingDate->minute,
+            $existingDate->second
+        );
+
         $prioritasNominal = $this->completePembagianPrioritas !== '' ? (int) $this->completePembagianPrioritas : 0;
 
         $submission->update([
             'status' => Submission::STATUS_SELESAI,
-            'tanggal_selesai' => $submission->tanggal_selesai ?? now(),
+            'tanggal_selesai' => $tanggalSelesai,
             'metode_pembayaran' => $this->completeMetodePembayaran,
             'jumlah_bayar' => (int) $this->completeJumlahBayar,
             'penerima' => $submission->tipe === Submission::TIPE_LAIN_LAIN ? $this->completePenerima : null,
@@ -477,7 +512,13 @@ class Dashboard extends Component
         ]);
 
         $metodeLabel = Submission::METODE_PEMBAYARAN_LABELS[$this->completeMetodePembayaran] ?? $this->completeMetodePembayaran;
-        SubmissionHistory::record($submission, SubmissionHistory::AKSI_SELESAI, 'Menandai pengajuan selesai. Metode bayar: '.$metodeLabel.' (Rp '.number_format((int) $this->completeJumlahBayar, 0, ',', '.').')');
+        $monthsList = [
+            1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
+            5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
+            9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
+        ];
+        $bulanLabel = $monthsList[$bulanInt] ?? $bulanInt;
+        SubmissionHistory::record($submission, SubmissionHistory::AKSI_SELESAI, 'Menandai pengajuan selesai. Periode: '.$bulanLabel.' '.$tahunInt.'. Metode bayar: '.$metodeLabel.' (Rp '.number_format((int) $this->completeJumlahBayar, 0, ',', '.').')');
 
         $this->closeComplete();
         session()->flash('success', 'Pengajuan ditandai selesai.');

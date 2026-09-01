@@ -245,17 +245,19 @@ class DashboardTest extends TestCase
 
         Livewire::test(\App\Livewire\Admin\Dashboard::class)
             ->call('openComplete', $submission->id)
+            ->set('completeBulan', '8')
+            ->set('completeTahun', '2026')
             ->set('completeMetodePembayaran', Submission::METODE_TRANSFER)
             ->set('completeJumlahBayar', '200000')
             ->call('completeSubmission')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('submissions', [
-            'id' => $submission->id,
-            'status' => Submission::STATUS_SELESAI,
-            'metode_pembayaran' => Submission::METODE_TRANSFER,
-            'jumlah_bayar' => 200000,
-        ]);
+        $submission->refresh();
+        $this->assertEquals(Submission::STATUS_SELESAI, $submission->status);
+        $this->assertEquals(8, $submission->tanggal_selesai->month);
+        $this->assertEquals(2026, $submission->tanggal_selesai->year);
+        $this->assertEquals(Submission::METODE_TRANSFER, $submission->metode_pembayaran);
+        $this->assertEquals(200000, $submission->jumlah_bayar);
     }
 
     public function test_completing_a_submission_requires_jumlah_bayar_at_least_biaya_jasa(): void
@@ -494,6 +496,7 @@ class DashboardTest extends TestCase
         $submission = Submission::factory()->create([
             'nama' => 'Late Payment Item',
             'status' => Submission::STATUS_DIPROSES,
+            'tipe' => Submission::TIPE_PROJECT,
             'biaya_jasa' => 1000000,
             'tanggal_pengajuan' => '2026-07-30',
             'deadline' => '2026-08-02',
@@ -504,6 +507,8 @@ class DashboardTest extends TestCase
         // Mark completed (paid) in August
         Livewire::test(\App\Livewire\Admin\Dashboard::class)
             ->call('openComplete', $submission->id)
+            ->set('completeBulan', '8')
+            ->set('completeTahun', '2026')
             ->set('completeJumlahBayar', '1000000')
             ->call('completeSubmission')
             ->assertHasNoErrors();
