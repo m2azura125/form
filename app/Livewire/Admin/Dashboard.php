@@ -73,6 +73,8 @@ class Dashboard extends Component
 
     public function mount(): void
     {
+        Submission::pindahkanKeBulanIni();
+
         if ($this->bulan === '') {
             $this->bulan = (string) date('n');
         }

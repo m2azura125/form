@@ -211,4 +211,44 @@ class Submission extends Model
     {
         return $this->hasMany(SubmissionHistory::class)->latest();
     }
+
+    /**
+     * Pindahkan pengajuan Baru/Diproses dari bulan sebelumnya ke tanggal 1 bulan ini.
+     * Deadline digeser dengan sisa hari yang sama (selisih tanggal pengajuan ke deadline).
+     */
+    public static function pindahkanKeBulanIni(): int
+    {
+        $awalBulan = Carbon::today()->startOfMonth();
+
+        $submissions = self::query()
+            ->whereIn('status', [self::STATUS_BARU, self::STATUS_DIPROSES])
+            ->whereDate('tanggal_pengajuan', '<', $awalBulan)
+            ->get();
+
+        foreach ($submissions as $submission) {
+            $sisaHari = max((int) $submission->tanggal_pengajuan->diffInDays($submission->deadline, false), 0);
+            $tanggalLama = $submission->tanggal_pengajuan->format('d-m-Y');
+            $deadlineLama = $submission->deadline->format('d-m-Y');
+            $deadlineBaru = $awalBulan->copy()->addDays($sisaHari);
+
+            $submission->update([
+                'tanggal_pengajuan' => $awalBulan->copy(),
+                'deadline' => $deadlineBaru,
+            ]);
+
+            SubmissionHistory::query()->create([
+                'submission_id' => $submission->id,
+                'user_id' => null,
+                'user_name' => 'Sistem',
+                'aksi' => SubmissionHistory::AKSI_PINDAH_BULAN,
+                'keterangan' => 'Dipindah ke bulan '.$awalBulan->copy()->locale('id')->translatedFormat('F Y').' dengan sisa deadline '.$sisaHari.' hari',
+                'perubahan' => [
+                    'tanggal_pengajuan' => ['dari' => $tanggalLama, 'ke' => $awalBulan->format('d-m-Y')],
+                    'deadline' => ['dari' => $deadlineLama, 'ke' => $deadlineBaru->format('d-m-Y')],
+                ],
+            ]);
+        }
+
+        return $submissions->count();
+    }
 }

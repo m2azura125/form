@@ -34,6 +34,11 @@ class Antrian extends Component
     #[Url(as: 'per_page', history: true)]
     public int $perPage = 15;
 
+    public function mount(): void
+    {
+        Submission::pindahkanKeBulanIni();
+    }
+
     public function updated(): void
     {
         $this->resetPage();
