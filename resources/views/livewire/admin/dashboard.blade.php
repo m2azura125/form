@@ -252,6 +252,12 @@
 
                                     @if ($submission->status === 'diproses')
                                         <button
+                                            wire:click="openUploadDp({{ $submission->id }})"
+                                            class="inline-flex items-center rounded-md border {{ $submission->bukti_dp ? 'border-lime-300 bg-lime-50 text-lime-700 hover:bg-lime-100' : 'border-amber-300 bg-white text-amber-700 hover:bg-amber-50' }} px-2.5 py-1 text-xs font-semibold"
+                                        >
+                                            {{ $submission->bukti_dp ? 'Bukti DP ✓' : 'Upload DP' }}
+                                        </button>
+                                        <button
                                             wire:click="openComplete({{ $submission->id }})"
                                             class="inline-flex items-center rounded-md bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white shadow-sm hover:bg-emerald-500"
                                         >
@@ -343,6 +349,10 @@
 
                         @if ($submission->status === 'diproses')
                             <button
+                                wire:click="openUploadDp({{ $submission->id }})"
+                                class="inline-flex items-center rounded-md border {{ $submission->bukti_dp ? 'border-lime-300 bg-lime-50 text-lime-700' : 'border-amber-300 bg-white text-amber-700' }} px-3 py-1.5 text-xs font-semibold"
+                            >{{ $submission->bukti_dp ? 'Bukti DP ✓' : 'Upload DP' }}</button>
+                            <button
                                 wire:click="openComplete({{ $submission->id }})"
                                 class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm"
                             >Selesai</button>
@@ -393,6 +403,9 @@
                             @endif
                             @if ($activeSubmission->tipe === \App\Models\Submission::TIPE_LAIN_LAIN)
                                 <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Penerima</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->penerimaLabel() ?? 'Belum ditentukan' }}</dd></div>
+                            @endif
+                            @if ($activeSubmission->bukti_dp)
+                                <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Bukti DP</dt><dd class="col-span-2"><a href="{{ route('admin.bukti-dp', $activeSubmission) }}" target="_blank" class="font-medium text-indigo-600 hover:text-indigo-500">Lihat bukti DP</a></dd></div>
                             @endif
                             @if ($activeSubmission->status === \App\Models\Submission::STATUS_SELESAI)
                                 <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Metode Pembayaran</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->metodePembayaranLabel() ?? '—' }}</dd></div>
@@ -595,6 +608,42 @@
                         <div class="flex justify-end gap-2 pt-2">
                             <button type="button" wire:click="closeAccept" class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Batal</button>
                             <button type="submit" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500">Terima & Proses</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    {{-- Upload bukti DP modal --}}
+    @if ($uploadingDpId && $uploadingDpSubmission)
+        <div class="fixed inset-0 z-40 overflow-y-auto">
+            <div class="fixed inset-0 bg-zinc-900/40" wire:click="closeUploadDp"></div>
+
+            <div class="flex min-h-full items-center justify-center p-4">
+                <div class="relative bg-white rounded-lg shadow-xl w-full max-w-sm p-6">
+                    <h2 class="text-lg font-semibold text-zinc-900">Bukti DP</h2>
+                    <p class="mt-1 text-sm text-zinc-500">{{ $uploadingDpSubmission->nama }} — {{ $uploadingDpSubmission->judul_alat }}</p>
+
+                    @if ($uploadingDpSubmission->bukti_dp)
+                        <p class="mt-3 text-sm text-zinc-700">
+                            Sudah ada bukti DP.
+                            <a href="{{ route('admin.bukti-dp', $uploadingDpSubmission) }}" target="_blank" class="font-medium text-indigo-600 hover:text-indigo-500">Lihat</a>
+                        </p>
+                    @endif
+
+                    <form wire:submit="saveBuktiDp" class="mt-4 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-zinc-700">{{ $uploadingDpSubmission->bukti_dp ? 'Ganti file' : 'File bukti DP' }}</label>
+                            <input type="file" wire:model="buktiDp" accept="image/jpeg,image/png,image/webp,application/pdf" class="mt-1.5 block w-full text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100">
+                            <p class="mt-1.5 text-xs text-zinc-400">JPG, PNG, WEBP, atau PDF. Maksimal 5 MB.</p>
+                            <p wire:loading wire:target="buktiDp" class="mt-1.5 text-xs text-zinc-500">Mengunggah...</p>
+                            @error('buktiDp') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                        </div>
+
+                        <div class="flex justify-end gap-2 pt-2">
+                            <button type="button" wire:click="closeUploadDp" class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">Batal</button>
+                            <button type="submit" wire:loading.attr="disabled" wire:target="buktiDp,saveBuktiDp" class="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50">Simpan</button>
                         </div>
                     </form>
                 </div>

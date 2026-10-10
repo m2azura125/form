@@ -21,6 +21,7 @@ class SubmissionHistory extends Model
     public const AKSI_HAPUS = 'hapus';
     public const AKSI_PULIHKAN = 'pulihkan';
     public const AKSI_PINDAH_BULAN = 'pindah_bulan';
+    public const AKSI_BUKTI_DP = 'bukti_dp';
 
     public const AKSI_LABELS = [
         self::AKSI_BUAT => 'Pengajuan Dibuat',
@@ -33,6 +34,7 @@ class SubmissionHistory extends Model
         self::AKSI_HAPUS => 'Dihapus',
         self::AKSI_PULIHKAN => 'Dipulihkan',
         self::AKSI_PINDAH_BULAN => 'Pindah Bulan',
+        self::AKSI_BUKTI_DP => 'Bukti DP',
     ];
 
     protected $fillable = [

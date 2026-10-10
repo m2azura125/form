@@ -118,6 +118,7 @@ class Submission extends Model
         'metode_pembayaran',
         'jumlah_bayar',
         'penerima',
+        'bukti_dp',
     ];
 
     protected function casts(): array

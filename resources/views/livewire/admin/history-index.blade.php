@@ -105,6 +105,7 @@
                                 'hapus' => 'bg-red-50 text-red-700 border-red-200',
                                 'pulihkan' => 'bg-teal-50 text-teal-700 border-teal-200',
                                 'pindah_bulan' => 'bg-orange-50 text-orange-700 border-orange-200',
+                                'bukti_dp' => 'bg-lime-50 text-lime-700 border-lime-200',
                                 default => 'bg-purple-50 text-purple-700 border-purple-200',
                             };
                         @endphp

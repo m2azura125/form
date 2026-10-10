@@ -7,15 +7,17 @@ use App\Models\Submission;
 use App\Models\SubmissionHistory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Url;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 #[Layout('layouts.admin')]
 class Dashboard extends Component
 {
-    use WithPagination;
+    use WithFileUploads, WithPagination;
 
     private const SORTABLE = ['nama', 'tanggal_pengajuan', 'deadline', 'urutan'];
 
@@ -30,6 +32,7 @@ class Dashboard extends Component
         'acceptingId', 'acceptBiayaJasa', 'acceptDeadline', 'acceptPenerima',
         'reordering', 'reorderItems',
         'completingId', 'completeMetodePembayaran', 'completeJumlahBayar', 'completePenerima', 'completePembagianPrioritas', 'completePenerimaPrioritas', 'completeBulan', 'completeTahun',
+        'uploadingDpId', 'buktiDp',
     ];
 
     #[Url(as: 'q', history: true)]
@@ -119,6 +122,10 @@ class Dashboard extends Component
     public string $completeBulan = '';
 
     public string $completeTahun = '';
+
+    public ?int $uploadingDpId = null;
+
+    public $buktiDp = null;
 
     public function updated(string $name): void
     {
@@ -385,6 +392,58 @@ class Dashboard extends Component
         SubmissionHistory::record($submission, SubmissionHistory::AKSI_TOLAK, 'Menolak pengajuan');
 
         session()->flash('success', 'Pengajuan ditolak.');
+    }
+
+    public function openUploadDp(int $id): void
+    {
+        $submission = Submission::query()->find($id);
+
+        if (! $submission || $submission->status !== Submission::STATUS_DIPROSES) {
+            return;
+        }
+
+        $this->uploadingDpId = $id;
+        $this->buktiDp = null;
+        $this->resetValidation();
+    }
+
+    public function closeUploadDp(): void
+    {
+        $this->uploadingDpId = null;
+        $this->buktiDp = null;
+        $this->resetValidation();
+    }
+
+    public function saveBuktiDp(): void
+    {
+        $submission = Submission::query()->find($this->uploadingDpId);
+
+        if (! $submission || $submission->status !== Submission::STATUS_DIPROSES) {
+            $this->closeUploadDp();
+
+            return;
+        }
+
+        $this->validate([
+            'buktiDp' => ['required', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'],
+        ], [
+            'buktiDp.required' => 'File bukti DP wajib dipilih.',
+            'buktiDp.mimes' => 'Bukti DP harus berupa gambar (JPG, PNG, WEBP) atau PDF.',
+            'buktiDp.max' => 'Ukuran file maksimal 5 MB.',
+        ]);
+
+        $gantiFile = $submission->bukti_dp !== null;
+        if ($gantiFile) {
+            Storage::disk('local')->delete($submission->bukti_dp);
+        }
+
+        $path = $this->buktiDp->store('bukti-dp', 'local');
+        $submission->update(['bukti_dp' => $path]);
+
+        SubmissionHistory::record($submission, SubmissionHistory::AKSI_BUKTI_DP, $gantiFile ? 'Mengganti bukti DP' : 'Mengunggah bukti DP');
+
+        $this->closeUploadDp();
+        session()->flash('success', 'Bukti DP berhasil disimpan.');
     }
 
     public function openComplete(int $id): void
@@ -733,6 +792,7 @@ class Dashboard extends Component
             'activeSubmission' => $this->activeId ? Submission::query()->withTrashed()->find($this->activeId) : null,
             'completingSubmission' => $this->completingId ? Submission::query()->find($this->completingId) : null,
             'acceptingSubmission' => $this->acceptingId ? Submission::query()->find($this->acceptingId) : null,
+            'uploadingDpSubmission' => $this->uploadingDpId ? Submission::query()->find($this->uploadingDpId) : null,
         ]);
     }
 }
