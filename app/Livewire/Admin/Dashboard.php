@@ -3,6 +3,7 @@
 namespace App\Livewire\Admin;
 
 use App\Livewire\Forms\SubmissionForm;
+use App\Models\PersentaseBagiHasil;
 use App\Models\Submission;
 use App\Models\SubmissionHistory;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,12 +21,6 @@ class Dashboard extends Component
     use WithFileUploads, WithPagination;
 
     private const SORTABLE = ['nama', 'tanggal_pengajuan', 'deadline', 'urutan'];
-
-    private const BAGI_HASIL_PERSEN = [
-        Submission::PENERIMA_TOKO => 0.23,
-        Submission::PENERIMA_KRISNA => 0.385,
-        Submission::PENERIMA_ALDO => 0.385,
-    ];
 
     private const TRANSIENT_PROPERTIES = [
         'activeId', 'modalMode', 'confirmingDeleteId',
@@ -713,9 +708,22 @@ class Dashboard extends Component
             });
         }
 
-        $completedSubmissions = $completedQuery->get(['tipe', 'penerima', 'biaya_jasa', 'pembagian_prioritas', 'penerima_prioritas']);
+        $completedSubmissions = $completedQuery->get(['tipe', 'penerima', 'biaya_jasa', 'pembagian_prioritas', 'penerima_prioritas', 'tanggal_selesai', 'tanggal_pengajuan']);
 
-        $totalProjectNet = 0;
+        // Persentase bagi hasil project mengikuti bulan selesainya masing-masing pengajuan.
+        $persenPerBulan = [];
+        $persenUntuk = function (Submission $sub) use (&$persenPerBulan): array {
+            $tanggal = $sub->tanggal_selesai ?? $sub->tanggal_pengajuan;
+            $kunci = $tanggal->format('Y-n');
+
+            return $persenPerBulan[$kunci] ??= PersentaseBagiHasil::persenUntuk((int) $tanggal->format('Y'), (int) $tanggal->format('n'));
+        };
+
+        $projectByPenerima = [
+            Submission::PENERIMA_TOKO => 0.0,
+            Submission::PENERIMA_KRISNA => 0.0,
+            Submission::PENERIMA_ALDO => 0.0,
+        ];
         $lainLainByPenerima = [
             Submission::PENERIMA_TOKO => 0,
             Submission::PENERIMA_KRISNA => 0,
@@ -745,7 +753,9 @@ class Dashboard extends Component
             }
 
             if ($sub->tipe === Submission::TIPE_PROJECT) {
-                $totalProjectNet += $net;
+                foreach ($persenUntuk($sub) as $penerima => $persen) {
+                    $projectByPenerima[$penerima] += $net * $persen / 100;
+                }
             } elseif ($sub->tipe === Submission::TIPE_LAIN_LAIN) {
                 if ($sub->penerima && isset($lainLainByPenerima[$sub->penerima])) {
                     $lainLainByPenerima[$sub->penerima] += $net;
@@ -757,14 +767,26 @@ class Dashboard extends Component
             }
         }
 
-        $bagiHasil = collect(self::BAGI_HASIL_PERSEN)->map(function ($persen, $penerima) use ($totalProjectNet, $lainLainByPenerima, $prioritasByPenerima) {
-            $dariProject = (int) round($totalProjectNet * $persen);
+        // Persentase yang ditampilkan: milik bulan terpilih, atau null kalau rentangnya memakai persentase berbeda-beda.
+        if ($this->bulan !== '' && $this->bulan !== 'all' && $this->tahun !== '' && $this->tahun !== 'all') {
+            $persenTampil = PersentaseBagiHasil::persenUntuk((int) $this->tahun, (int) $this->bulan);
+        } else {
+            $persenTerpakai = array_unique(array_map('serialize', $persenPerBulan));
+            $persenTampil = match (count($persenTerpakai)) {
+                0 => PersentaseBagiHasil::persenUntuk((int) date('Y'), (int) date('n')),
+                1 => unserialize(reset($persenTerpakai)),
+                default => null,
+            };
+        }
+
+        $bagiHasil = collect($projectByPenerima)->map(function ($dariProjectFloat, $penerima) use ($persenTampil, $lainLainByPenerima, $prioritasByPenerima) {
+            $dariProject = (int) round($dariProjectFloat);
             $dariLainLain = (int) ($lainLainByPenerima[$penerima] ?? 0);
             $dariPrioritas = (int) ($prioritasByPenerima[$penerima] ?? 0);
 
             return [
                 'label' => Submission::PENERIMA_LABELS[$penerima],
-                'persen' => $persen,
+                'persen' => $persenTampil[$penerima] ?? null,
                 'nominal' => $dariProject + $dariLainLain + $dariPrioritas,
             ];
         })->all();

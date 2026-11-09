@@ -94,11 +94,11 @@
                     Total: Rp {{ number_format($totalPendapatan, 0, ',', '.') }}
                 </p>
             </div>
-            <p class="text-xs text-amber-700 mb-3">Bagi hasil (23% / 38,5% / 38,5%) dihitung setelah dipotong pembagian prioritas sesuai penerima prioritas. Sisa biaya Cetak PCB &amp; Cetak 3D Printing masuk ke Lainnya.</p>
+            <p class="text-xs text-amber-700 mb-3">Bagi hasil project dihitung dengan persentase bulan selesainya, setelah dipotong pembagian prioritas sesuai penerima prioritas. Sisa biaya Cetak PCB &amp; Cetak 3D Printing masuk ke Lainnya. <a href="{{ route('admin.bagi-hasil') }}" wire:navigate class="font-medium underline hover:text-amber-900">Atur persentase</a></p>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 @foreach ($bagiHasil as $bagian)
                     <div class="bg-white border border-amber-200 rounded-lg px-4 py-3">
-                        <p class="text-xs text-zinc-500">{{ $bagian['label'] }} ({{ rtrim(rtrim(number_format($bagian['persen'] * 100, 1), '0'), '.') }}%)</p>
+                        <p class="text-xs text-zinc-500">{{ $bagian['label'] }} ({{ $bagian['persen'] !== null ? \App\Models\PersentaseBagiHasil::formatPersen($bagian['persen']) : 'bervariasi' }})</p>
                         <p class="mt-1 text-lg font-semibold tabular-nums text-amber-700">
                             Rp {{ number_format($bagian['nominal'], 0, ',', '.') }}
                         </p>
@@ -531,7 +531,7 @@
                             <div>
                                 <label class="block text-sm font-medium text-zinc-700">Pembagian Prioritas (Rp)</label>
                                 <input type="number" min="0" step="1000" wire:model.live="form.pembagian_prioritas" placeholder="0" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
-                                <p class="mt-1 text-xs text-zinc-500">Nominal ini dipotong terlebih dahulu sebelum pembagian persentase (23% / 38,5% / 38,5%).</p>
+                                <p class="mt-1 text-xs text-zinc-500">Nominal ini dipotong terlebih dahulu sebelum pembagian persentase bagi hasil.</p>
                                 @error('form.pembagian_prioritas') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
                             </div>
 
