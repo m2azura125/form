@@ -217,7 +217,12 @@
                     <tr class="hover:bg-zinc-50">
                         <td class="px-4 py-3 text-sm text-zinc-500 tabular-nums">{{ $submissions->firstItem() + $i }}</td>
                         <td class="px-4 py-3 text-sm text-zinc-500 tabular-nums">{{ $submission->urutan ?? '—' }}</td>
-                        <td class="px-4 py-3 text-sm font-medium text-zinc-900">{{ $submission->nama }}</td>
+                        <td class="px-4 py-3 text-sm font-medium text-zinc-900">
+                            <div>{{ $submission->nama }}</div>
+                            @if ($submission->no_hp)
+                                <a href="{{ $submission->whatsappUrl() }}" target="_blank" rel="noopener" class="text-xs font-normal text-emerald-600 hover:text-emerald-500 tabular-nums">{{ $submission->no_hp }}</a>
+                            @endif
+                        </td>
                         <td class="px-4 py-3 text-sm text-zinc-600"><div class="max-w-[200px] truncate" title="{{ $submission->judul_alat }}">{{ $submission->judul_alat }}</div></td>
                         <td class="px-4 py-3 text-sm text-zinc-600 whitespace-nowrap">{{ $submission->tipeLabel() }}</td>
                         <td class="px-4 py-3 text-sm text-zinc-600 tabular-nums">{{ $submission->tanggal_pengajuan->format('d-m-Y') }}</td>
@@ -296,6 +301,9 @@
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-zinc-900 truncate">{{ $submission->nama }}</p>
                         <p class="text-xs text-zinc-500 truncate mt-0.5">{{ $submission->judul_alat }}</p>
+                        @if ($submission->no_hp)
+                            <a href="{{ $submission->whatsappUrl() }}" target="_blank" rel="noopener" class="text-xs font-normal text-emerald-600 hover:text-emerald-500 tabular-nums">{{ $submission->no_hp }}</a>
+                        @endif
                     </div>
                 </div>
 
@@ -391,6 +399,15 @@
 
                         <dl class="space-y-3 text-sm">
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Nama</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->nama }}</dd></div>
+                            <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">No. HP</dt><dd class="col-span-2 text-zinc-900">
+                                @if ($activeSubmission->no_hp)
+                                    <span class="tabular-nums">{{ $activeSubmission->no_hp }}</span>
+                                    <a href="{{ $activeSubmission->whatsappUrl() }}" target="_blank" rel="noopener" class="ml-2 inline-flex items-center rounded-md bg-emerald-600 px-2 py-0.5 text-xs font-semibold text-white hover:bg-emerald-500">WhatsApp</a>
+                                    <a href="tel:{{ $activeSubmission->no_hp }}" class="ml-1 inline-flex items-center rounded-md border border-zinc-300 px-2 py-0.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50">Telepon</a>
+                                @else
+                                    <span class="text-zinc-400">Tidak ada</span>
+                                @endif
+                            </dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Asal Kampus/Sekolah</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->asal_kampus }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Judul Alat</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->judul_alat }}</dd></div>
                             <div class="grid grid-cols-3 gap-2"><dt class="text-zinc-500">Tipe</dt><dd class="col-span-2 text-zinc-900">{{ $activeSubmission->tipeLabel() }}</dd></div>
@@ -452,6 +469,12 @@
                                 <label class="block text-sm font-medium text-zinc-700">Asal Kampus/Sekolah</label>
                                 <input type="text" wire:model.blur="form.asal_kampus" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                 @error('form.asal_kampus') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-zinc-700">No. HP/WhatsApp</label>
+                                <input type="tel" wire:model.blur="form.no_hp" placeholder="08xxxxxxxxxx" class="mt-1.5 block w-full rounded-md border-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                                @error('form.no_hp') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
                             </div>
 
                             <div>

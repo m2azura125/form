@@ -79,7 +79,7 @@ class SubmissionsExport implements FromQuery, WithHeadings, WithMapping, WithSty
     public function headings(): array
     {
         return [
-            'No', 'Nama', 'Asal Kampus/Sekolah', 'Judul Alat', 'Tipe', 'Fitur',
+            'No', 'Nama', 'No. HP', 'Asal Kampus/Sekolah', 'Judul Alat', 'Tipe', 'Fitur',
             'Tanggal Pengajuan', 'Deadline', 'Biaya Jasa', 'Status', 'Dibuat Pada',
         ];
     }
@@ -92,6 +92,7 @@ class SubmissionsExport implements FromQuery, WithHeadings, WithMapping, WithSty
         return [
             $no,
             $this->escapeFormula($submission->nama),
+            $submission->no_hp,
             $this->escapeFormula($submission->asal_kampus),
             $this->escapeFormula($submission->judul_alat),
             $submission->tipeLabel(),

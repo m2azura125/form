@@ -41,7 +41,7 @@ class ExportTest extends TestCase
         $rows = (new SubmissionsExport)->map($submission->fresh());
 
         $this->assertSame("'=cmd|'/c calc'!A1", $rows[1]);
-        $this->assertSame("'+SUM(1+1)", $rows[3]);
+        $this->assertSame("'+SUM(1+1)", $rows[4]);
     }
 
     public function test_export_filters_by_month_and_year(): void

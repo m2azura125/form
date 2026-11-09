@@ -104,6 +104,7 @@ class Submission extends Model
     protected $fillable = [
         'nama',
         'asal_kampus',
+        'no_hp',
         'judul_alat',
         'tipe',
         'fitur',
@@ -151,6 +152,29 @@ class Submission extends Model
     public function tipeLabel(): string
     {
         return self::TIPE_LABELS[$this->tipe] ?? $this->tipe;
+    }
+
+    /**
+     * Ubah nomor HP ke format lokal 08xxxx (hanya angka).
+     */
+    public static function normalisasiNoHp(string $noHp): string
+    {
+        $angka = preg_replace('/\D/', '', $noHp);
+
+        if (str_starts_with($angka, '62')) {
+            $angka = '0'.substr($angka, 2);
+        }
+
+        return $angka;
+    }
+
+    public function whatsappUrl(): ?string
+    {
+        if (! $this->no_hp) {
+            return null;
+        }
+
+        return 'https://wa.me/62'.substr(self::normalisasiNoHp($this->no_hp), 1);
     }
 
     public function biayaJasaFormatted(): ?string

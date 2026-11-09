@@ -48,6 +48,7 @@ class SubmissionFactory extends Factory
         return [
             'nama' => $this->faker->name(),
             'asal_kampus' => $this->faker->randomElement(self::ASAL_KAMPUS),
+            'no_hp' => '08'.$this->faker->numerify('##########'),
             'judul_alat' => $this->faker->randomElement(self::JUDUL_ALAT),
             'tipe' => $this->faker->randomElement(Submission::TIPES),
             'fitur' => $this->faker->paragraph(3),

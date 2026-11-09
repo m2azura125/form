@@ -9,6 +9,7 @@ class SubmissionForm extends Form
 {
     public string $nama = '';
     public string $asal_kampus = '';
+    public string $no_hp = '';
     public string $judul_alat = '';
     public string $tipe = '';
     public string $fitur = '';
@@ -29,6 +30,7 @@ class SubmissionForm extends Form
         $rules = [
             'nama' => ['required', 'string', 'min:3', 'max:100'],
             'asal_kampus' => ['required', 'string', 'min:3', 'max:150'],
+            'no_hp' => [$this->includeStatus ? 'nullable' : 'required', 'string', 'regex:/^(\+62|62|0)[\s\-]?8[0-9\s\-]{7,16}$/'],
             'judul_alat' => ['required', 'string', 'min:3', 'max:150'],
             'tipe' => ['required', 'in:'.implode(',', Submission::TIPES)],
             'fitur' => ['required', 'string', 'max:1000'],
@@ -85,6 +87,8 @@ class SubmissionForm extends Form
             'asal_kampus.required' => 'Asal kampus/sekolah wajib diisi.',
             'asal_kampus.min' => 'Asal kampus/sekolah minimal 3 karakter.',
             'asal_kampus.max' => 'Asal kampus/sekolah maksimal 150 karakter.',
+            'no_hp.required' => 'Nomor HP/WhatsApp wajib diisi.',
+            'no_hp.regex' => 'Nomor HP tidak valid. Gunakan format 08xxxxxxxxxx atau +628xxxxxxxxxx.',
             'judul_alat.required' => 'Judul alat wajib diisi.',
             'judul_alat.min' => 'Judul alat minimal 3 karakter.',
             'judul_alat.max' => 'Judul alat maksimal 150 karakter.',
@@ -121,6 +125,7 @@ class SubmissionForm extends Form
     {
         $this->nama = $submission->nama;
         $this->asal_kampus = $submission->asal_kampus;
+        $this->no_hp = $submission->no_hp ?? '';
         $this->judul_alat = $submission->judul_alat;
         $this->tipe = $submission->tipe;
         $this->fitur = $submission->fitur;
@@ -140,6 +145,7 @@ class SubmissionForm extends Form
         $data = [
             'nama' => $this->nama,
             'asal_kampus' => $this->asal_kampus,
+            'no_hp' => $this->no_hp !== '' ? Submission::normalisasiNoHp($this->no_hp) : null,
             'judul_alat' => $this->judul_alat,
             'tipe' => $this->tipe,
             'fitur' => $this->fitur,

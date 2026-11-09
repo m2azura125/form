@@ -104,6 +104,7 @@ class HistoryTest extends TestCase
         $submission = Submission::factory()->create([
             'biaya_jasa' => 150000,
             'status' => Submission::STATUS_DIPROSES,
+            'tipe' => Submission::TIPE_PROJECT,
         ]);
 
         Livewire::actingAs($admin)

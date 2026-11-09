@@ -15,6 +15,7 @@ class SubmissionFormTest extends TestCase
     {
         return $component
             ->set('form.nama', 'Budi Santoso')
+            ->set('form.no_hp', '0812-3456-7890')
             ->set('form.asal_kampus', 'Universitas Gadjah Mada')
             ->set('form.judul_alat', 'Alat Pengering Otomatis Berbasis Arduino')
             ->set('form.tipe', Submission::TIPE_PROJECT)
@@ -32,6 +33,7 @@ class SubmissionFormTest extends TestCase
         $this->assertDatabaseHas('submissions', [
             'nama' => 'Budi Santoso',
             'asal_kampus' => 'Universitas Gadjah Mada',
+            'no_hp' => '081234567890',
             'judul_alat' => 'Alat Pengering Otomatis Berbasis Arduino',
             'status' => Submission::STATUS_BARU,
             'biaya_jasa' => null,
@@ -46,6 +48,45 @@ class SubmissionFormTest extends TestCase
             ->assertHasErrors(['form.deadline']);
 
         $this->assertDatabaseCount('submissions', 0);
+    }
+
+    public function test_no_hp_is_required(): void
+    {
+        $this->fillValidForm(Livewire::test(\App\Livewire\Public\SubmissionForm::class))
+            ->set('form.no_hp', '')
+            ->call('submit')
+            ->assertHasErrors(['form.no_hp' => 'required']);
+
+        $this->assertDatabaseCount('submissions', 0);
+    }
+
+    public function test_no_hp_must_be_valid_indonesian_number(): void
+    {
+        $this->fillValidForm(Livewire::test(\App\Livewire\Public\SubmissionForm::class))
+            ->set('form.no_hp', '12345')
+            ->call('submit')
+            ->assertHasErrors(['form.no_hp' => 'regex']);
+
+        $this->assertDatabaseCount('submissions', 0);
+    }
+
+    public function test_no_hp_with_62_prefix_is_normalized(): void
+    {
+        $this->fillValidForm(Livewire::test(\App\Livewire\Public\SubmissionForm::class))
+            ->set('form.no_hp', '+62 812 3456 7890')
+            ->call('submit')
+            ->assertHasNoErrors();
+
+        $submission = Submission::query()->firstOrFail();
+        $this->assertSame('081234567890', $submission->no_hp);
+        $this->assertSame('https://wa.me/6281234567890', $submission->whatsappUrl());
+    }
+
+    public function test_no_hp_is_not_shown_on_public_antrian(): void
+    {
+        Submission::factory()->create(['no_hp' => '081299998888']);
+
+        $this->get('/antrian')->assertOk()->assertDontSee('081299998888');
     }
 
     public function test_judul_alat_is_required(): void

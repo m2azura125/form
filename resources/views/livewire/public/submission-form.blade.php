@@ -59,6 +59,28 @@
                     </div>
 
                     <div>
+                        <label for="no_hp" class="block text-sm font-medium text-zinc-700">No. HP/WhatsApp</label>
+                        <div class="relative mt-1.5">
+                            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-400">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                </svg>
+                            </span>
+                            <input
+                                type="tel"
+                                id="no_hp"
+                                inputmode="tel"
+                                autocomplete="tel"
+                                wire:model.blur="form.no_hp"
+                                placeholder="08xxxxxxxxxx"
+                                class="block w-full rounded-md border-zinc-300 pl-10 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                            >
+                        </div>
+                        <p class="mt-1.5 text-xs text-zinc-400">Dipakai admin untuk menghubungi Anda. Tidak ditampilkan di antrian publik.</p>
+                        @error('form.no_hp') <p class="mt-1.5 text-sm text-red-600">{{ $message }}</p> @enderror
+                    </div>
+
+                    <div>
                         <label for="asal_kampus" class="block text-sm font-medium text-zinc-700">Asal Kampus/Sekolah</label>
                         <div class="relative mt-1.5">
                             <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-zinc-400">
